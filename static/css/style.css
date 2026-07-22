@@ -1,0 +1,398 @@
+/*
+static/css/style.css -- BreadFlow shared styles.
+
+Palette per CLAUDE.md: navy (primary/sidebar), teal (secondary/success/
+approved), warm brown (accent), gold (pending/urgency). --navy, --teal,
+and --warm-brown are the locked project colours; --navy-dark/--navy-light
+and --teal-dark are derived shades for gradients/hover states, and
+--gold/--error-red/--surface/--text/--border are sensible defaults for
+states the locked palette doesn't cover.
+
+Login layout matches the Module 1 mock-up: a fixed ~22/78 split-screen
+(navy brand panel + white form panel), not a centred card.
+*/
+
+:root {
+    --navy: #1B2A4A;
+    --navy-dark: #121E36;
+    --navy-light: #2C4370;
+    --teal: #2A7F7F;
+    --teal-dark: #1F6363;
+    /* Both colour-sampled directly from the mock-up PNG (not part of the
+       3 locked colours) -- feature-list text is a cool slate blue-grey,
+       NOT teal/mint as originally guessed; the bullet dots are a
+       distinct brighter mint-green, separate from --teal. */
+    --feature-text: #99A6BD;
+    --mint-green: #4FC79A;
+    --warm-brown: #8B5E3C;
+    --gold: #D9A441;
+    --error-red: #C0392B;
+    --error-bg: #FBEAE8;
+    --surface: #FFFFFF;
+    --text: #423C36;      /* warm dark grey, not pure black -- body text on the white panel */
+    --text-muted: #7A7168;
+    --border: #DDE2E7;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    /* Bumped from the 16px browser default so every rem-based size in
+       this file scales up uniformly; headings/buttons are then bumped
+       further on top of this. */
+    font-size: 17px;
+}
+
+body {
+    margin: 0;
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    color: var(--text);
+    background: var(--surface);
+}
+
+/* ---- login page: split screen ----------------------------------------- */
+
+.login-page {
+    min-height: 100vh;
+    display: flex;
+}
+
+/* Left brand panel -- measured directly off the mock-up PNG at
+   840/3646px = ~23% of the page width. The warm-brown accent border
+   belongs to this panel only, not the full page width. */
+.login-left {
+    flex: 0 0 23%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 40px 28px 32px;
+    background: linear-gradient(160deg, var(--navy) 0%, var(--navy-dark) 100%);
+    color: #fff;
+    border-bottom: 8px solid var(--warm-brown);
+}
+
+.login-left-content {
+    width: 100%;
+    max-width: 360px;
+}
+
+/* Bread Staple's own logo, anchored to the bottom of the panel. */
+.brand-logo-large {
+    width: 120px;
+    max-width: 70%;
+    height: auto;
+}
+
+/* Sidebar heading hierarchy, top to bottom: "Bread Staple" (largest,
+   bold, white) / "Bakery" (small, teal) / divider / "BreadFlow" (bold,
+   white, smaller than "Bread Staple") / subtext (small, teal). */
+.brand-name-primary {
+    margin: 0 0 2px;
+    font-size: 2.6rem;
+    font-weight: 700;
+}
+
+.brand-name-secondary {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--teal);
+}
+
+.brand-divider {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.18);
+    margin: 20px 0 24px;
+}
+
+.brand-heading {
+    margin: 0 0 8px;
+    font-size: 1.9rem;
+    font-weight: 700;
+}
+
+.brand-subtext {
+    margin: 0 0 24px;
+    font-size: 1.05rem;
+    line-height: 1.4;
+    color: var(--teal);
+}
+
+.feature-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.feature-list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1.05rem;
+    color: var(--feature-text);
+}
+
+.feature-list .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--mint-green);
+    flex-shrink: 0;
+}
+
+/* Right form panel. Top-aligned with a top padding that roughly matches
+   the sidebar's own top padding (40px), not vertically centered -- the
+   mock-up has "Hi There" sitting near the top of the panel, not in the
+   middle of a mostly-empty page. */
+.login-right {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 56px 24px 24px;
+    background: var(--surface);
+}
+
+.login-form-wrap {
+    width: 100%;
+    max-width: 340px;
+}
+
+.login-form-wrap h1 {
+    margin: 0 0 6px;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--navy);
+}
+
+.login-subtext {
+    margin: 0 0 24px;
+    font-size: 1.1rem;
+    color: var(--text-muted);
+}
+
+/* Role tabs: three separate rounded-rectangle buttons with a visible gap
+   between them, active one filled navy. Clicking a tab is purely a
+   client-side toggle (see static/js/login.js) -- no page reload, keeping
+   this within NF-01's 3-click budget. */
+.role-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.role-tab {
+    flex: 1;
+    text-align: center;
+    padding: 18px 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.role-tab.active {
+    background: var(--navy);
+    border-color: var(--navy);
+    color: #fff;
+}
+
+.field {
+    margin-bottom: 16px;
+}
+
+.field label {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--text);
+}
+
+.field input[type="email"],
+.field input[type="password"],
+.field input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 1.05rem;
+}
+
+.field input:focus {
+    outline: none;
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(42, 127, 127, 0.18);
+}
+
+/* Show/hide password toggle: icon-only button inside the field,
+   right-aligned. This wraps ONLY the input (not the <label> above it),
+   so `top: 50%` on the absolutely-positioned button below centers
+   against the input's own height, not the label+input block -- keeping
+   it centered regardless of input height. Two SVGs are stacked in the
+   button; CSS shows the one that matches the current state, toggled via
+   the .is-visible class (static/js/login.js). */
+.password-input-wrap {
+    position: relative;
+}
+
+/* [type="password"] here isn't just semantic -- it raises this rule's
+   specificity to match .field input[type="password"] above (which sets
+   padding on all sides), so this padding-right override actually wins
+   the cascade instead of silently losing to it. */
+.password-input-wrap input[type="password"] {
+    width: 100%;
+    padding-right: 44px;
+}
+
+/* Docked to the field's right edge as its own shaded box (per the
+   mock-up), spanning the input's full height via top/bottom:1px rather
+   than a top:50%/translateY trick -- flexbox centers the icon inside
+   regardless of how tall the input ends up being. */
+.password-toggle {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    bottom: 1px;
+    width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #E4E7EC;
+    border: none;
+    border-left: 1px solid var(--border);
+    border-radius: 0 5px 5px 0;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.password-toggle:hover {
+    color: var(--navy);
+}
+
+.password-toggle svg {
+    width: 20px;
+    height: 20px;
+}
+
+.password-toggle .icon-eye-off {
+    display: none;
+}
+
+.password-toggle.is-visible .icon-eye {
+    display: none;
+}
+
+.password-toggle.is-visible .icon-eye-off {
+    display: block;
+}
+
+/* NF-08: errors are generic ("Invalid email or password") but must still
+   be impossible to miss -- icon + red border on a light pink field. */
+.error-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: var(--error-bg);
+    color: var(--error-red);
+    border: 1px solid var(--error-red);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 0.95rem;
+    margin-bottom: 16px;
+}
+
+.error-banner svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.btn-primary {
+    width: 100%;
+    padding: 22px 0;
+    background: var(--navy);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.btn-primary:hover {
+    background: var(--navy-light);
+}
+
+.login-footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 0.9rem;
+    color: var(--warm-brown);
+}
+
+/* Stack to a single column once the brand panel would crowd the form. */
+@media (max-width: 860px) {
+    .login-page {
+        flex-direction: column;
+    }
+
+    .login-left {
+        flex: none;
+        padding: 32px 24px;
+    }
+
+    .login-left-content {
+        max-width: none;
+    }
+
+    .feature-list {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 12px 24px;
+    }
+
+    .login-right {
+        padding: 32px 24px;
+    }
+}
+
+/* ---- stub dashboard ---------------------------------------------------- */
+
+.stub-page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #F4F6F8;
+    color: var(--navy);
+    text-align: center;
+    gap: 16px;
+}
+
+.stub-page form {
+    margin: 0;
+}
+
+.stub-page button {
+    background: var(--warm-brown);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    cursor: pointer;
+}

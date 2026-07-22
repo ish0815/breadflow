@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Log in - BreadFlow{% endblock %}
+
+{% block body %}
+<div class="login-page">
+    <aside class="login-left">
+        <div class="login-left-content">
+            <p class="brand-name-primary">Bread Staple</p>
+            <p class="brand-name-secondary">Bakery</p>
+            <hr class="brand-divider">
+
+            <p class="brand-heading">BreadFlow</p>
+            <p class="brand-subtext">Order management<br>for Bread Staple Bakery</p>
+
+            <ul class="feature-list">
+                <li><span class="dot" aria-hidden="true"></span>Place and track orders</li>
+                <li><span class="dot" aria-hidden="true"></span>Auto-generate invoices</li>
+                <li><span class="dot" aria-hidden="true"></span>Daily production lists</li>
+                <li><span class="dot" aria-hidden="true"></span>Delivery management</li>
+            </ul>
+        </div>
+
+        <!-- Bread Staple's own logo, recoloured white -- static/images/bread-staple-logo-white.png
+             is derived from the source static/images/Bread Staple Logo.png (which has a solid
+             opaque white background, not transparency) via a luminosity-based alpha mask. -->
+        <img class="brand-logo-large"
+             src="{{ url_for('static', filename='images/bread-staple-logo-white.png') }}"
+             alt="Bread Staple Bakery">
+    </aside>
+
+    <main class="login-right">
+        <div class="login-form-wrap">
+            <h1>Hi There</h1>
+            <p class="login-subtext">Sign in to your BreadFlow account</p>
+
+            {% if error %}
+            <div class="error-banner" role="alert">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/>
+                    <line x1="12" y1="8" x2="12" y2="13"/>
+                    <line x1="12" y1="16" x2="12" y2="16.01"/>
+                </svg>
+                <span>{{ error }}</span>
+            </div>
+            {% endif %}
+
+            <form method="post" action="{{ url_for('login') }}" novalidate>
+                <!-- Role tabs: client-side toggle only (login.js). The
+                     selected value is carried by this hidden input and is
+                     validated server-side as a required field, but never
+                     used to decide the post-login redirect -- see app.py. -->
+                <div class="role-tabs" role="tablist">
+                    {% for r in roles %}
+                    <button type="button"
+                            class="role-tab {% if r == active_tab %}active{% endif %}"
+                            data-role="{{ r }}"
+                            role="tab"
+                            aria-selected="{{ 'true' if r == active_tab else 'false' }}">
+                        {{ r | capitalize }}
+                    </button>
+                    {% endfor %}
+                </div>
+                <input type="hidden" name="role" id="role-input" value="{{ active_tab }}">
+
+                <div class="field">
+                    <label for="email">Email address</label>
+                    <input type="email" id="email" name="email" value="{{ email }}"
+                           maxlength="254" required autocomplete="username">
+                </div>
+
+                <div class="field">
+                    <label for="password">Password</label>
+                    <div class="password-input-wrap">
+                        <input type="password" id="password" name="password"
+                               required autocomplete="current-password">
+                        <button type="button" class="password-toggle" id="password-toggle"
+                                aria-label="Show password">
+                            <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                            <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.6 21.6 0 0 1 5.06-5.94M9.9 4.24A10.4 10.4 0 0 1 12 4c7 0 11 7 11 7a21.6 21.6 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+                                <path d="M1 1l22 22"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary">Sign In</button>
+            </form>
+
+            <p class="login-footer">Trouble logging in? Contact Bread Staple.</p>
+        </div>
+    </main>
+</div>
+
+<script src="{{ url_for('static', filename='js/login.js') }}"></script>
+{% endblock %}

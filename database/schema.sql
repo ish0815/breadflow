@@ -23,7 +23,15 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT NOT NULL,             -- bcrypt hash only (NF-06) -- never plaintext
     role          TEXT NOT NULL CHECK (role IN ('owner', 'client', 'driver')),  -- FR-A3
     is_active     INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),       -- SQLite has no native BOOLEAN
-    created_at    TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%S', 'now'))
+    created_at    TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%S', 'now')),
+    -- FR-A1 data dictionary: "Timestamp of successful login ... Set server-side
+    -- ... Cannot be in the future". NULL until the account's first successful
+    -- login (e.g. a client created by Module 11 who hasn't logged in yet).
+    -- No CHECK constraint needed for "cannot be in the future": this column
+    -- is only ever written by User.authenticate() using the database's own
+    -- STRFTIME('now'), never from user-supplied input, so a future value is
+    -- not reachable through the application.
+    login_at      TEXT
 );
 
 CREATE TABLE IF NOT EXISTS clients (

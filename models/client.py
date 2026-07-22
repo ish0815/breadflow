@@ -24,11 +24,12 @@ class Client(User):
     def __init__(self, user_id, email, password_hash, is_active,
                  client_id, business_name, abn, delivery_zone,
                  delivery_day1, delivery_day2, delivery_charge,
-                 internal_notes=None):
+                 internal_notes=None, login_at=None):
         """Construct a Client from an already-validated, joined users+clients row.
         `role` is fixed to 'client' rather than accepted as a parameter, so it's
         impossible to construct a Client instance with the wrong role by mistake."""
-        super().__init__(user_id, email, password_hash, role="client", is_active=is_active)
+        super().__init__(user_id, email, password_hash, role="client",
+                          is_active=is_active, login_at=login_at)
 
         self._client_id = client_id
         self._business_name = business_name
@@ -100,6 +101,7 @@ class Client(User):
             row = connection.execute(
                 """
                 SELECT users.user_id, users.email, users.password_hash, users.is_active,
+                       users.login_at,
                        clients.client_id, clients.business_name, clients.abn,
                        clients.delivery_zone, clients.delivery_day1, clients.delivery_day2,
                        clients.delivery_charge, clients.internal_notes
@@ -126,7 +128,7 @@ class Client(User):
             business_name=row["business_name"], abn=row["abn"],
             delivery_zone=row["delivery_zone"], delivery_day1=row["delivery_day1"],
             delivery_day2=row["delivery_day2"], delivery_charge=row["delivery_charge"],
-            internal_notes=row["internal_notes"],
+            internal_notes=row["internal_notes"], login_at=row["login_at"],
         )
 
     # ---- session -----------------------------------------------------

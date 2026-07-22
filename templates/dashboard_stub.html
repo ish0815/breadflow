@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}{{ portal_name }} Dashboard - BreadFlow{% endblock %}
+
+{% block body %}
+<div class="stub-page">
+    <h1>{{ portal_name }} portal</h1>
+    <p>FR-A1 login succeeded. The real {{ portal_name }} dashboard is built in a later module.</p>
+    <form method="post" action="{{ url_for('logout') }}">
+        <button type="submit">Log out</button>
+    </form>
+</div>
+{% endblock %}

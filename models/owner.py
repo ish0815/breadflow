@@ -16,6 +16,7 @@ from models.user import User
 class Owner(User):
     """An Owner is a User with role='owner' and no additional fields (yet)."""
 
-    def __init__(self, user_id, email, password_hash, is_active):
+    def __init__(self, user_id, email, password_hash, is_active, login_at=None):
         """Construct an Owner from an already-validated users-table row."""
-        super().__init__(user_id, email, password_hash, role="owner", is_active=is_active)
+        super().__init__(user_id, email, password_hash, role="owner",
+                          is_active=is_active, login_at=login_at)

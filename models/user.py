@@ -78,7 +78,7 @@ class User:
     its own table, because it doesn't apply to every role.
     """
 
-    def __init__(self, user_id, email, password_hash, role, is_active=True):
+    def __init__(self, user_id, email, password_hash, role, is_active=True, login_at=None):
         """Construct a User from already-validated data (a trusted database row).
         Never called directly with raw form input -- see User.authenticate()."""
         # Single leading underscore (protected, not private): subclasses
@@ -90,6 +90,7 @@ class User:
         self._password_hash = password_hash  # bcrypt hash only -- NF-06, never plaintext
         self._role = role
         self._is_active = bool(is_active)  # SQLite stores 0/1; normalise to a real bool in Python
+        self._login_at = login_at  # ISO 8601 string, or None if never logged in
 
     # ---- read-only accessors --------------------------------------------
     # Exposed as properties rather than public attributes because user_id
@@ -116,6 +117,13 @@ class User:
     def is_active(self):
         """False once an owner has called deactivate() on this account."""
         return self._is_active
+
+    @property
+    def login_at(self):
+        """ISO 8601 timestamp of this account's most recent successful login,
+        or None if it has never logged in. Set server-side only -- see
+        User.authenticate()."""
+        return self._login_at
 
     # ---- authentication --------------------------------------------------
 
@@ -185,6 +193,23 @@ class User:
                     "This account has been deactivated. Contact Bread Staple."
                 )
 
+            # FR-A1: record this successful login. STRFTIME('now') is the
+            # database's own clock, not the app server's, so login_at is
+            # genuinely "set server-side" regardless of where Flask runs --
+            # matching the data dictionary's "Cannot be in the future" rule
+            # by construction, since the app never accepts this as input.
+            connection.execute(
+                "UPDATE users SET login_at = STRFTIME('%Y-%m-%dT%H:%M:%S', 'now') WHERE user_id = ?",
+                (row["user_id"],),
+            )
+            connection.commit()
+            # Re-read the row so the object we build reflects the login_at
+            # value just written, instead of the stale NULL/previous value
+            # captured by the SELECT above.
+            row = connection.execute(
+                "SELECT * FROM users WHERE user_id = ?", (row["user_id"],)
+            ).fetchone()
+
             return cls._build_from_row(row, connection)
         finally:
             # Closed here, after _build_from_row() has finished using it,
@@ -207,10 +232,12 @@ class User:
         role = row["role"]
         if role == "owner":
             from models.owner import Owner
-            return Owner(row["user_id"], row["email"], row["password_hash"], row["is_active"])
+            return Owner(row["user_id"], row["email"], row["password_hash"],
+                         row["is_active"], row["login_at"])
         if role == "driver":
             from models.driver import Driver
-            return Driver(row["user_id"], row["email"], row["password_hash"], row["is_active"])
+            return Driver(row["user_id"], row["email"], row["password_hash"],
+                          row["is_active"], row["login_at"])
         if role == "client":
             from models.client import Client
             return Client.load_by_user_id(row["user_id"], connection)
