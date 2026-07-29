@@ -13,9 +13,7 @@ SQL strings instead.
 import sqlite3
 from pathlib import Path
 
-# instance/ is gitignored (see .gitignore), so the actual database file --
-# which will hold real client business data (ABNs, emails) once populated --
-# is never committed to version control (NF-06, Privacy Act 1988 s.APP 11).
+# gitignored -- real client data never hits version control (NF-06)
 DATABASE_PATH = Path(__file__).resolve().parent.parent / "instance" / "breadflow.db"
 
 SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"

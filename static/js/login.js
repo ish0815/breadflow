@@ -1,14 +1,4 @@
-/*
-static/js/login.js -- login page interactivity only.
-
-Two small, self-contained behaviours, deliberately kept out of a
-framework (CLAUDE.md: vanilla JS only if needed):
-  1. Role tab switching -- purely visual + updates the hidden `role`
-     field; the server independently validates this value on submit.
-  2. Password show/hide toggle.
-Neither behaviour touches the network or does any validation itself --
-all real validation happens server-side in User.authenticate().
-*/
+/* static/js/login.js -- role tab switching + password show/hide. Server re-validates everything. */
 
 document.addEventListener("DOMContentLoaded", function () {
     var roleInput = document.getElementById("role-input");

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Pending orders - BreadFlow{% endblock %}
+
+{% block body %}
+<div class="order-page">
+    <header class="order-header">
+        <h1>Pending orders</h1>
+        <p class="order-subtext">{{ orders|length }} awaiting a decision</p>
+    </header>
+
+    <main class="order-form-wrap">
+        {% if not orders %}
+        <p>No orders are waiting for approval right now.</p>
+        {% else %}
+        <div class="pending-order-list">
+            {% for order in orders %}
+            <div class="pending-order-card">
+                <div class="pending-order-header">
+                    <span class="pending-order-client">{{ order.business_name }}</span>
+                    <span class="status-pill status-pending">Pending</span>
+                </div>
+                <p class="pending-order-date">Delivery: {{ order.delivery_date }}</p>
+                <p class="pending-order-products">{{ order.product_summary }}</p>
+                {% if order.special_instructions %}
+                <p class="pending-order-notes">Note: {{ order.special_instructions }}</p>
+                {% endif %}
+                <p class="pending-order-total">${{ "%.2f"|format(order.total_value) }}</p>
+
+                <div class="pending-order-actions">
+                    <form method="post" action="{{ url_for('orders.approve_order', order_id=order.order_id) }}">
+                        <button type="submit" class="btn-approve">Approve</button>
+                    </form>
+                    <form method="post" action="{{ url_for('orders.reject_order', order_id=order.order_id) }}">
+                        <button type="submit" class="btn-reject">Reject</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}

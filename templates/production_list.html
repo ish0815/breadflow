@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Production list - BreadFlow{% endblock %}
+
+{% block body %}
+<div class="order-page">
+    <header class="order-header">
+        <h1>Daily production list</h1>
+        <p class="order-subtext">{{ production_date }}</p>
+    </header>
+
+    <main class="order-form-wrap">
+        <form method="get" action="{{ url_for('production.production_list_view') }}" class="field">
+            <label for="date">Delivery date</label>
+            <select id="date" name="date" onchange="this.form.submit()">
+                {% for date in available_dates %}
+                <option value="{{ date }}" {% if date == production_date %}selected{% endif %}>{{ date }}</option>
+                {% endfor %}
+            </select>
+        </form>
+
+        {% if production_list is none %}
+        <p>No approved orders found for {{ production_date }}.</p>
+        {% else %}
+        <div class="production-info-bar">
+            <span>{{ production_list.approved_order_count }} approved order(s)</span>
+            <span>{{ production_list.total_client_count }} client(s)</span>
+            <span>Generated {{ production_list.generated_at }}</span>
+        </div>
+
+        <div class="production-line-list">
+            {% for line in production_list.lines %}
+            <div class="production-line-card">
+                <p class="production-line-name">{{ line.product_name }}</p>
+                <div class="production-line-figures">
+                    <div class="figure">
+                        <span class="figure-label">Ordered</span>
+                        <span class="figure-value">{{ line.total_ordered }}</span>
+                    </div>
+                    <div class="figure">
+                        <span class="figure-label">+10% buffer</span>
+                        <span class="figure-value figure-buffer">+{{ line.buffer_qty }}</span>
+                    </div>
+                    <div class="figure">
+                        <span class="figure-label">Produce</span>
+                        <span class="figure-value figure-produce">{{ line.produce_qty }}</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}

@@ -116,10 +116,7 @@ class Client(User):
                 connection.close()
 
         if row is None:
-            # A users row with role='client' but no matching clients row is
-            # a data-integrity bug (client creation should always insert
-            # both rows in one transaction), not a user input error -- so
-            # this fails loudly instead of silently returning None.
+            # integrity bug if this happens -- fail loudly, don't return None
             raise ValueError(f"No clients row found for user_id={user_id}")
 
         return cls(
@@ -130,6 +127,34 @@ class Client(User):
             delivery_day2=row["delivery_day2"], delivery_charge=row["delivery_charge"],
             internal_notes=row["internal_notes"], login_at=row["login_at"],
         )
+
+    # ---- ordering (FR-B1/B2) --------------------------------------------
+
+    def get_approved_products(self):
+        """
+        FR-B2: the products this client is allowed to see and order, with
+        their agreed price/pack size for this client specifically.
+
+        Joins through client_products rather than querying `products`
+        directly -- a product this client has no client_products row for
+        must never appear here, since that row is the only thing that
+        marks a product as approved for them.
+        """
+        connection = get_db_connection()
+        try:
+            return connection.execute(
+                """
+                SELECT products.product_id, products.product_name, products.category,
+                       client_products.agreed_price, client_products.pack_size
+                FROM client_products
+                JOIN products ON products.product_id = client_products.product_id
+                WHERE client_products.client_id = ?
+                ORDER BY products.category, products.product_name
+                """,
+                (self._client_id,),
+            ).fetchall()
+        finally:
+            connection.close()
 
     # ---- session -----------------------------------------------------
 

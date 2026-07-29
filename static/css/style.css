@@ -1,15 +1,7 @@
 /*
 static/css/style.css -- BreadFlow shared styles.
-
-Palette per CLAUDE.md: navy (primary/sidebar), teal (secondary/success/
-approved), warm brown (accent), gold (pending/urgency). --navy, --teal,
-and --warm-brown are the locked project colours; --navy-dark/--navy-light
-and --teal-dark are derived shades for gradients/hover states, and
---gold/--error-red/--surface/--text/--border are sensible defaults for
-states the locked palette doesn't cover.
-
-Login layout matches the Module 1 mock-up: a fixed ~22/78 split-screen
-(navy brand panel + white form panel), not a centred card.
+Palette: navy/teal/warm-brown locked (CLAUDE.md); rest are derived shades/defaults.
+Login layout: fixed ~22/78 split screen per mock-up, not a centred card.
 */
 
 :root {
@@ -18,10 +10,7 @@ Login layout matches the Module 1 mock-up: a fixed ~22/78 split-screen
     --navy-light: #2C4370;
     --teal: #2A7F7F;
     --teal-dark: #1F6363;
-    /* Both colour-sampled directly from the mock-up PNG (not part of the
-       3 locked colours) -- feature-list text is a cool slate blue-grey,
-       NOT teal/mint as originally guessed; the bullet dots are a
-       distinct brighter mint-green, separate from --teal. */
+    /* sampled from the mock-up PNG, not part of the 3 locked colours */
     --feature-text: #99A6BD;
     --mint-green: #4FC79A;
     --warm-brown: #8B5E3C;
@@ -39,10 +28,7 @@ Login layout matches the Module 1 mock-up: a fixed ~22/78 split-screen
 }
 
 html {
-    /* Bumped from the 16px browser default so every rem-based size in
-       this file scales up uniformly; headings/buttons are then bumped
-       further on top of this. */
-    font-size: 17px;
+    font-size: 17px;  /* bumped from 16px default so rem sizes scale up */
 }
 
 body {
@@ -59,9 +45,7 @@ body {
     display: flex;
 }
 
-/* Left brand panel -- measured directly off the mock-up PNG at
-   840/3646px = ~23% of the page width. The warm-brown accent border
-   belongs to this panel only, not the full page width. */
+/* left brand panel, ~23% width per mock-up; accent border is panel-only */
 .login-left {
     flex: 0 0 23%;
     display: flex;
@@ -87,9 +71,7 @@ body {
     height: auto;
 }
 
-/* Sidebar heading hierarchy, top to bottom: "Bread Staple" (largest,
-   bold, white) / "Bakery" (small, teal) / divider / "BreadFlow" (bold,
-   white, smaller than "Bread Staple") / subtext (small, teal). */
+/* heading order: Bread Staple / Bakery / divider / BreadFlow / subtext */
 .brand-name-primary {
     margin: 0 0 2px;
     font-size: 2.6rem;
@@ -147,10 +129,7 @@ body {
     flex-shrink: 0;
 }
 
-/* Right form panel. Top-aligned with a top padding that roughly matches
-   the sidebar's own top padding (40px), not vertically centered -- the
-   mock-up has "Hi There" sitting near the top of the panel, not in the
-   middle of a mostly-empty page. */
+/* right form panel, top-aligned (not centred) to match the mock-up */
 .login-right {
     flex: 1;
     display: flex;
@@ -178,10 +157,7 @@ body {
     color: var(--text-muted);
 }
 
-/* Role tabs: three separate rounded-rectangle buttons with a visible gap
-   between them, active one filled navy. Clicking a tab is purely a
-   client-side toggle (see static/js/login.js) -- no page reload, keeping
-   this within NF-01's 3-click budget. */
+/* role tabs: client-side toggle only, see login.js */
 .role-tabs {
     display: flex;
     gap: 10px;
@@ -236,30 +212,18 @@ body {
     box-shadow: 0 0 0 3px rgba(42, 127, 127, 0.18);
 }
 
-/* Show/hide password toggle: icon-only button inside the field,
-   right-aligned. This wraps ONLY the input (not the <label> above it),
-   so `top: 50%` on the absolutely-positioned button below centers
-   against the input's own height, not the label+input block -- keeping
-   it centered regardless of input height. Two SVGs are stacked in the
-   button; CSS shows the one that matches the current state, toggled via
-   the .is-visible class (static/js/login.js). */
+/* icon-only show/hide button inside the field, wraps only the input */
 .password-input-wrap {
     position: relative;
 }
 
-/* [type="password"] here isn't just semantic -- it raises this rule's
-   specificity to match .field input[type="password"] above (which sets
-   padding on all sides), so this padding-right override actually wins
-   the cascade instead of silently losing to it. */
+/* [type="password"] bumps specificity so this wins over .field's padding rule */
 .password-input-wrap input[type="password"] {
     width: 100%;
     padding-right: 44px;
 }
 
-/* Docked to the field's right edge as its own shaded box (per the
-   mock-up), spanning the input's full height via top/bottom:1px rather
-   than a top:50%/translateY trick -- flexbox centers the icon inside
-   regardless of how tall the input ends up being. */
+/* docked to the field's right edge, per the mock-up */
 .password-toggle {
     position: absolute;
     top: 1px;
@@ -298,8 +262,7 @@ body {
     display: block;
 }
 
-/* NF-08: errors are generic ("Invalid email or password") but must still
-   be impossible to miss -- icon + red border on a light pink field. */
+/* NF-08: generic message, but hard to miss -- icon + red border */
 .error-banner {
     display: flex;
     align-items: flex-start;
@@ -395,4 +358,315 @@ body {
     border-radius: 6px;
     padding: 8px 16px;
     cursor: pointer;
+}
+
+.stub-page a {
+    color: var(--navy);
+}
+
+/* ---- flash messages (base.html) ---------------------------------------- */
+
+.flash-messages {
+    max-width: 480px;
+    margin: 16px auto 0;
+    padding: 0 16px;
+}
+
+.flash-banner {
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    font-size: 0.95rem;
+}
+
+.flash-success {
+    background: #E7F4F1;
+    color: var(--teal-dark);
+    border: 1px solid var(--teal);
+}
+
+.flash-error {
+    background: var(--error-bg);
+    color: var(--error-red);
+    border: 1px solid var(--error-red);
+}
+
+/* ---- order pages (Module B: order form + owner pending orders) --------- */
+/* phone-first: clients order via WhatsApp today (NF-02) */
+
+.order-page {
+    min-height: 100vh;
+    background: #F4F6F8;
+}
+
+.order-header {
+    background: var(--navy);
+    color: #fff;
+    padding: 24px 20px;
+}
+
+.order-header h1 {
+    margin: 0 0 4px;
+    font-size: 1.6rem;
+}
+
+.order-subtext {
+    margin: 0;
+    color: var(--teal);
+    font-size: 0.95rem;
+}
+
+.order-form-wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 20px 16px 40px;
+}
+
+.order-form-wrap .field {
+    margin-bottom: 18px;
+}
+
+.order-form-wrap select,
+.order-form-wrap textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 1.05rem;
+    font-family: inherit;
+}
+
+.order-form-wrap textarea {
+    resize: vertical;
+    min-height: 70px;
+}
+
+.product-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.product-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+}
+
+.product-name {
+    margin: 0;
+    font-weight: 600;
+}
+
+.product-meta {
+    margin: 2px 0 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* sized for a numeric-keypad input on a phone (NF-02) */
+.quantity-input {
+    width: 64px;
+    padding: 10px;
+    text-align: center;
+    font-size: 1.1rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.order-summary {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+}
+
+.order-summary-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.95rem;
+    padding: 4px 0;
+    color: var(--text-muted);
+}
+
+.order-summary-total {
+    border-top: 1px solid var(--border);
+    margin-top: 6px;
+    padding-top: 10px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--text);
+}
+
+/* ---- owner pending orders ----------------------------------------------- */
+
+.pending-order-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.pending-order-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.pending-order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.pending-order-client {
+    font-weight: 700;
+    color: var(--navy);
+}
+
+/* gold = pending/urgency, matches Module 2's stat cards */
+.status-pill {
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+}
+
+.status-pending {
+    background: #FBF0DA;
+    color: #8A6A1F;
+}
+
+.pending-order-date,
+.pending-order-products,
+.pending-order-notes {
+    margin: 4px 0;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+}
+
+.pending-order-total {
+    margin: 10px 0 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.pending-order-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.pending-order-actions form {
+    flex: 1;
+    margin: 0;
+}
+
+/* opposing hues so approve/reject clicks don't risk a misclick */
+.btn-approve,
+.btn-reject {
+    width: 100%;
+    padding: 12px 0;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-approve {
+    background: var(--teal);
+    color: #fff;
+}
+
+.btn-approve:hover {
+    background: var(--teal-dark);
+}
+
+.btn-reject {
+    background: var(--error-bg);
+    color: var(--error-red);
+    border: 1px solid var(--error-red);
+}
+
+.btn-reject:hover {
+    background: #F6D9D5;
+}
+
+/* reuses .error-banner's colours, just widens the layout here */
+.order-form-wrap .error-banner {
+    margin-bottom: 18px;
+}
+
+/* ---- production list (Module C) ----------------------------------------- */
+
+.production-info-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 18px;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.production-line-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.production-line-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+}
+
+.production-line-name {
+    margin: 0 0 10px;
+    font-weight: 700;
+    color: var(--navy);
+}
+
+.production-line-figures {
+    display: flex;
+    gap: 20px;
+}
+
+.figure {
+    display: flex;
+    flex-direction: column;
+}
+
+.figure-label {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.figure-value {
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+/* teal = system-calculated, distinguishes it from the raw ordered figure */
+.figure-buffer {
+    color: var(--teal-dark);
+}
+
+.figure-produce {
+    color: var(--navy);
 }

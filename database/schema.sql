@@ -1,21 +1,6 @@
--- database/schema.sql
--- BreadFlow database schema. Built incrementally as each module is developed;
--- currently covers Module 1 (Login) only: `users` + `clients`.
---
--- Design decision: clients get their OWN table with its own primary key
--- (client_id), rather than folding business fields onto `users`, because
--- every other module in the design docs (Orders, Invoices, ClientCatalogue,
--- Analytics) references "clientID" as a foreign key in its own right --
--- e.g. orders.clientID, invoices.clientID, client_products.clientID.
--- Treating client data as columns on `users` would mean every one of those
--- FKs actually points to users.user_id, contradicting the data dictionaries
--- for Modules 2-12.
---
--- Drivers do NOT get a separate table yet: Module 5's data dictionary
--- defines `driverID` as "FK to users table", so a driver's identity is
--- fully described by a row in `users` with role = 'driver'. A `drivers`
--- table will only be added if a later module (vehicle info, fixed route
--- assignment, etc.) turns out to need driver-specific columns.
+-- database/schema.sql -- BreadFlow schema, built incrementally per module.
+-- clients has its own table/PK since other modules FK to clientID directly.
+-- No drivers table yet -- role='driver' on users covers it for now.
 
 CREATE TABLE IF NOT EXISTS users (
     user_id       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,13 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
     role          TEXT NOT NULL CHECK (role IN ('owner', 'client', 'driver')),  -- FR-A3
     is_active     INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),       -- SQLite has no native BOOLEAN
     created_at    TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%S', 'now')),
-    -- FR-A1 data dictionary: "Timestamp of successful login ... Set server-side
-    -- ... Cannot be in the future". NULL until the account's first successful
-    -- login (e.g. a client created by Module 11 who hasn't logged in yet).
-    -- No CHECK constraint needed for "cannot be in the future": this column
-    -- is only ever written by User.authenticate() using the database's own
-    -- STRFTIME('now'), never from user-supplied input, so a future value is
-    -- not reachable through the application.
+    -- null until first login; only ever written server-side via STRFTIME('now')
     login_at      TEXT
 );
 
@@ -38,10 +17,7 @@ CREATE TABLE IF NOT EXISTS clients (
     client_id       INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id         INTEGER NOT NULL UNIQUE REFERENCES users(user_id) ON DELETE CASCADE,
     business_name   TEXT NOT NULL UNIQUE,    -- Module 7: trading name, default A-Z sort key
-    -- Exactly 11 digits, no separators: GLOB with 11 single-digit character
-    -- classes enforces both the length AND that every character is 0-9 in
-    -- one constraint, so a value like "123 456 789" or a 10-digit ABN is
-    -- rejected at the database layer, not just in Python.
+    -- GLOB enforces exactly 11 digits, no separators
     abn             TEXT NOT NULL UNIQUE
                     CHECK (abn GLOB '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'),
     delivery_zone   TEXT NOT NULL CHECK (delivery_zone IN ('Western', 'Northern', 'Eastern', 'Southern')),
@@ -49,4 +25,67 @@ CREATE TABLE IF NOT EXISTS clients (
     delivery_day2   TEXT NOT NULL CHECK (delivery_day2 != delivery_day1),
     delivery_charge REAL NOT NULL CHECK (delivery_charge > 0),
     internal_notes  TEXT                     -- Module 11: owner-only, must never reach the client portal
+);
+
+-- Module 12: master product record. Per-client price/pack size live on client_products.
+CREATE TABLE IF NOT EXISTS products (
+    product_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_name TEXT NOT NULL UNIQUE,
+    category     TEXT NOT NULL CHECK (category IN ('Bread', 'Pastry', 'Savoury')),
+    base_price   REAL NOT NULL CHECK (base_price > 0),
+    pack_size    INTEGER NOT NULL CHECK (pack_size > 0)
+);
+
+-- ClientCatalogue (FR-B2): gates what a client can see/order -- no row here, no access.
+CREATE TABLE IF NOT EXISTS client_products (
+    catalogue_entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id          INTEGER NOT NULL REFERENCES clients(client_id) ON DELETE CASCADE,
+    product_id         INTEGER NOT NULL REFERENCES products(product_id) ON DELETE CASCADE,
+    agreed_price       REAL NOT NULL CHECK (agreed_price > 0),  -- per-client negotiated price; overrides products.base_price
+    pack_size          INTEGER NOT NULL CHECK (pack_size > 0),  -- per-client agreed pack size; overrides products.pack_size
+    UNIQUE (client_id, product_id)
+);
+
+-- FR-B1/B3/B4. No delivery_charge/gst/total columns -- computed on read
+-- (GST/delivery only apply at invoicing, FR-D1), so nothing here can drift.
+CREATE TABLE IF NOT EXISTS orders (
+    order_id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id            INTEGER NOT NULL REFERENCES clients(client_id) ON DELETE CASCADE,
+    -- validated against the client's 2 assigned weekdays in Order.place()
+    delivery_date        TEXT NOT NULL,
+    order_status         TEXT NOT NULL DEFAULT 'pending'
+                         CHECK (order_status IN ('pending', 'approved', 'rejected', 'delivered')),
+    special_instructions TEXT CHECK (special_instructions IS NULL OR LENGTH(special_instructions) <= 300),
+    order_created_at     TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%S', 'now')),
+    approved_by          INTEGER REFERENCES users(user_id),  -- NULL while pending (FR-B4)
+    approved_at          TEXT
+);
+
+CREATE TABLE IF NOT EXISTS order_lines (
+    order_line_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id      INTEGER NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE,
+    product_id    INTEGER NOT NULL REFERENCES products(product_id),
+    quantity      INTEGER NOT NULL CHECK (quantity > 0),
+    -- locked in from client_products.agreed_price at order time
+    unit_price    REAL NOT NULL CHECK (unit_price > 0)
+);
+
+-- FR-C1/FR-C2: audit log of generation events, not read back to build the list
+CREATE TABLE IF NOT EXISTS production_lists (
+    production_list_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+    production_date     TEXT NOT NULL,
+    generated_by        INTEGER NOT NULL REFERENCES users(user_id),
+    generated_at         TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%S', 'now')),
+    approved_order_count INTEGER NOT NULL CHECK (approved_order_count >= 0),
+    total_client_count   INTEGER NOT NULL CHECK (total_client_count >= 0)
+);
+
+-- one row per product per list; no clientID -- bakers see product totals only
+CREATE TABLE IF NOT EXISTS production_lines (
+    production_line_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    production_list_id INTEGER NOT NULL REFERENCES production_lists(production_list_id) ON DELETE CASCADE,
+    product_id          INTEGER NOT NULL REFERENCES products(product_id),
+    total_ordered       INTEGER NOT NULL CHECK (total_ordered >= 0),
+    buffer_qty          INTEGER NOT NULL CHECK (buffer_qty >= 0),
+    produce_qty         INTEGER NOT NULL CHECK (produce_qty >= 0)
 );

@@ -6,7 +6,10 @@
 <div class="stub-page">
     <h1>{{ portal_name }} portal</h1>
     <p>FR-A1 login succeeded. The real {{ portal_name }} dashboard is built in a later module.</p>
-    <form method="post" action="{{ url_for('logout') }}">
+    {% for link_url, link_label in extra_links|default([]) %}
+    <p><a href="{{ link_url }}">{{ link_label }}</a></p>
+    {% endfor %}
+    <form method="post" action="{{ url_for('auth.logout') }}">
         <button type="submit">Log out</button>
     </form>
 </div>

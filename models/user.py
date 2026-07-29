@@ -19,21 +19,12 @@ import bcrypt
 
 from database.db import get_db_connection
 
-# Matches the data dictionary's "Valid email format" constraint: something,
-# an @, something, a dot, something. Deliberately simple rather than a
-# full RFC 5322 pattern -- BreadFlow's clients are time-poor business
-# owners entering their own real work email, not adversarial input, so a
-# pattern that catches obvious typos (missing @, missing domain) is more
-# useful than one that rejects legitimate-but-unusual addresses.
+# simple email check -- catches typos, not a strict RFC 5322 match
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 MAX_EMAIL_LENGTH = 254      # data dictionary: "Max 254 chars"
 MIN_PASSWORD_LENGTH = 8     # data dictionary: "Min 8 characters"
-# bcrypt silently truncates any input past 72 BYTES and hashes the rest --
-# two different passwords that share the same first 72 bytes would produce
-# the same hash. Rejecting long input outright is safer than letting that
-# happen unnoticed.
-MAX_PASSWORD_BYTES = 72
+MAX_PASSWORD_BYTES = 72     # bcrypt silently truncates past 72 bytes
 
 
 class AuthenticationError(Exception):
@@ -81,10 +72,7 @@ class User:
     def __init__(self, user_id, email, password_hash, role, is_active=True, login_at=None):
         """Construct a User from already-validated data (a trusted database row).
         Never called directly with raw form input -- see User.authenticate()."""
-        # Single leading underscore (protected, not private): subclasses
-        # need direct access to these when building themselves from a
-        # joined database row, but external code should always go through
-        # the read-only properties below instead of touching these fields.
+        # protected not private -- subclasses need direct access, external code uses the properties below
         self._user_id = user_id
         self._email = email
         self._password_hash = password_hash  # bcrypt hash only -- NF-06, never plaintext
@@ -93,10 +81,7 @@ class User:
         self._login_at = login_at  # ISO 8601 string, or None if never logged in
 
     # ---- read-only accessors --------------------------------------------
-    # Exposed as properties rather than public attributes because user_id
-    # and role are set once from a trusted database row and must never be
-    # reassigned by calling code -- e.g. accidentally overwriting the role
-    # that FR-A3 access checks rely on.
+    # properties, not public attributes -- user_id/role must never be reassigned
 
     @property
     def user_id(self):
@@ -161,20 +146,13 @@ class User:
         if not EMAIL_PATTERN.match(email):
             raise ValidationError("Enter a valid email address")
 
-        # A genuine account password is always >= 8 characters (enforced
-        # wherever passwords are created), so anything shorter can never
-        # match a real hash. Rejecting it here avoids a pointless bcrypt
-        # verification call, which is intentionally slow by design.
+        # too short to match any real hash -- skip the slow bcrypt call
         if len(password) < MIN_PASSWORD_LENGTH:
             raise InvalidCredentialsError("Invalid email or password")
 
         connection = get_db_connection()
         try:
-            # COLLATE NOCASE rather than lower-casing `email` in Python: it
-            # compares against whatever case the address was originally
-            # stored in, instead of requiring every write path (Module 11's
-            # client registration, future owner/driver account creation) to
-            # remember to lower-case emails too.
+            # COLLATE NOCASE avoids relying on every write path to lower-case emails
             row = connection.execute(
                 "SELECT * FROM users WHERE email = ? COLLATE NOCASE", (email,)
             ).fetchone()
@@ -193,29 +171,20 @@ class User:
                     "This account has been deactivated. Contact Bread Staple."
                 )
 
-            # FR-A1: record this successful login. STRFTIME('now') is the
-            # database's own clock, not the app server's, so login_at is
-            # genuinely "set server-side" regardless of where Flask runs --
-            # matching the data dictionary's "Cannot be in the future" rule
-            # by construction, since the app never accepts this as input.
+            # FR-A1: record this login, using the DB's own clock not the app server's
             connection.execute(
                 "UPDATE users SET login_at = STRFTIME('%Y-%m-%dT%H:%M:%S', 'now') WHERE user_id = ?",
                 (row["user_id"],),
             )
             connection.commit()
-            # Re-read the row so the object we build reflects the login_at
-            # value just written, instead of the stale NULL/previous value
-            # captured by the SELECT above.
+            # re-read to pick up the login_at we just set
             row = connection.execute(
                 "SELECT * FROM users WHERE user_id = ?", (row["user_id"],)
             ).fetchone()
 
             return cls._build_from_row(row, connection)
         finally:
-            # Closed here, after _build_from_row() has finished using it,
-            # rather than each branch above closing it individually -- one
-            # place to reason about connection lifetime instead of a
-            # close-before-every-return pattern repeated four times.
+            # closed here, after _build_from_row() is done with it
             connection.close()
 
     @staticmethod
@@ -241,9 +210,7 @@ class User:
         if role == "client":
             from models.client import Client
             return Client.load_by_user_id(row["user_id"], connection)
-        # Defensive, not reachable in normal operation: the `role` column has
-        # a CHECK constraint restricting it to owner/client/driver, so this
-        # would only fire if the database were modified outside BreadFlow.
+        # unreachable -- role has a CHECK constraint
         raise ValueError(f"Unknown role '{role}' on users table")
 
     # ---- session -----------------------------------------------------

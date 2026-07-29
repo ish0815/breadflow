@@ -21,9 +21,7 @@
             </ul>
         </div>
 
-        <!-- Bread Staple's own logo, recoloured white -- static/images/bread-staple-logo-white.png
-             is derived from the source static/images/Bread Staple Logo.png (which has a solid
-             opaque white background, not transparency) via a luminosity-based alpha mask. -->
+        <!-- recoloured white logo, derived from the source PNG via alpha mask -->
         <img class="brand-logo-large"
              src="{{ url_for('static', filename='images/bread-staple-logo-white.png') }}"
              alt="Bread Staple Bakery">
@@ -46,11 +44,8 @@
             </div>
             {% endif %}
 
-            <form method="post" action="{{ url_for('login') }}" novalidate>
-                <!-- Role tabs: client-side toggle only (login.js). The
-                     selected value is carried by this hidden input and is
-                     validated server-side as a required field, but never
-                     used to decide the post-login redirect -- see app.py. -->
+            <form method="post" action="{{ url_for('auth.login') }}" novalidate>
+                <!-- role tabs: client-side toggle, validated server-side but never trusted for the redirect -->
                 <div class="role-tabs" role="tablist">
                     {% for r in roles %}
                     <button type="button"

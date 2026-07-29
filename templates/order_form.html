@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Place an order - BreadFlow{% endblock %}
+
+{% block body %}
+<div class="order-page">
+    <header class="order-header">
+        <h1>Place an order</h1>
+        <p class="order-subtext">{{ client.business_name }}</p>
+    </header>
+
+    <main class="order-form-wrap">
+        {% if error %}
+        <div class="error-banner" role="alert">{{ error }}</div>
+        {% endif %}
+
+        {% if not products %}
+        <p>You don't have any approved products yet. Contact Bread Staple to get your catalogue set up.</p>
+        {% else %}
+        <form method="post" action="{{ url_for('orders.client_order_form') }}" novalidate id="order-form">
+            <div class="field">
+                <label for="delivery_date">Delivery date</label>
+                <select id="delivery_date" name="delivery_date" required>
+                    <option value="" disabled {% if not submitted.get('delivery_date') %}selected{% endif %}>Select a delivery date</option>
+                    {% for date in delivery_dates %}
+                    <option value="{{ date.isoformat() }}" {% if submitted.get('delivery_date') == date.isoformat() %}selected{% endif %}>
+                        {{ date.strftime('%a %d %b %Y') }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="product-list">
+                {% for product in products %}
+                <div class="product-card">
+                    <div class="product-info">
+                        <p class="product-name">{{ product.product_name }}</p>
+                        <p class="product-meta">{{ product.category }} &middot; pack of {{ product.pack_size }} &middot; ${{ "%.2f"|format(product.agreed_price) }}/pack</p>
+                    </div>
+                    <input type="number" inputmode="numeric" min="0" step="1"
+                           class="quantity-input" name="quantity_{{ product.product_id }}"
+                           data-price="{{ product.agreed_price }}"
+                           value="{{ submitted.get('quantity_' ~ product.product_id, '0') }}">
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="field">
+                <label for="special_instructions">Special instructions (optional)</label>
+                <textarea id="special_instructions" name="special_instructions" maxlength="300"
+                          placeholder="e.g. leave at back door">{{ submitted.get('special_instructions', '') }}</textarea>
+            </div>
+
+            <div class="order-summary">
+                <div class="order-summary-row"><span>Products</span><span id="summary-subtotal">$0.00</span></div>
+                <div class="order-summary-row"><span>Delivery</span><span id="summary-delivery">${{ "%.2f"|format(client.delivery_charge) }}</span></div>
+                <div class="order-summary-row"><span>GST on delivery</span><span id="summary-gst">$0.00</span></div>
+                <div class="order-summary-row order-summary-total"><span>Total</span><span id="summary-total">$0.00</span></div>
+            </div>
+
+            <button type="submit" class="btn-primary">Place order</button>
+        </form>
+        {% endif %}
+    </main>
+</div>
+
+<script>
+    window.BREADFLOW_DELIVERY_CHARGE = {{ client.delivery_charge }};
+</script>
+<script src="{{ url_for('static', filename='js/order_form.js') }}"></script>
+{% endblock %}
