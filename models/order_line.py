@@ -1,16 +1,8 @@
-"""
-models/order_line.py -- OrderLine: one product/quantity within a placed order.
-
-Kept as its own class (rather than plain tuples) because the data
-dictionary gives it its own validation rule (validateQuantity) and derived
-value (calculateLineTotal) -- both belong on the line, not on the parent
-Order.
-"""
+# models/order_line.py -- OrderLine: one product/quantity within a placed order.
 
 
+# One order_lines row: product, quantity, and price locked in at order time.
 class OrderLine:
-    """One row of order_lines: a product, the quantity ordered, and the
-    price locked in at order time (unaffected by later catalogue changes)."""
 
     def __init__(self, order_line_id, order_id, product_id, quantity, unit_price, product_name=None):
         self._order_line_id = order_line_id
@@ -45,13 +37,11 @@ class OrderLine:
     def product_name(self):
         return self._product_name
 
+    # quantity x unitPrice.
     def calculate_line_total(self):
-        """quantity x unitPrice, per the data dictionary."""
         return self._quantity * self._unit_price
 
+    # True if a positive integer >= 1. Expects an already-parsed int.
     @staticmethod
     def validate_quantity(quantity):
-        """True if quantity is a positive integer >= 1, per the data dictionary.
-        Expects an already-parsed int -- string parsing happens in Order.place(),
-        which knows what a malformed form field should display as an error."""
         return isinstance(quantity, int) and quantity >= 1

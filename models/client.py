@@ -1,33 +1,17 @@
-"""
-models/client.py -- Client subclass of User.
-
-Represents a B2B customer account (restaurant, cafe, retailer). Inherits
-login/session/deactivation behaviour from User, but ALL of its
-business-specific fields (business_name, abn, delivery_zone, etc.) live in
-the separate `clients` table, joined on user_id -- not as extra columns on
-`users`. This mirrors how every other module (Orders, Invoices,
-ClientCatalogue) already treats clientID as its own foreign key, and keeps
-`users` a pure authentication table shared by all three roles.
-"""
+# models/client.py -- Client subclass of User; business fields live in the clients table.
 
 from database.db import get_db_connection
 from models.user import User
 
 
+# A User (role='client') plus their clients-table row: ABN, delivery zone/days/charge, notes.
 class Client(User):
-    """
-    A Client is a User (role='client') plus the row from `clients` that
-    describes their business: ABN, assigned delivery zone/days, delivery
-    charge, and any internal notes an owner has recorded about them.
-    """
 
+    # Role is fixed to 'client', never a parameter -- can't construct with the wrong role.
     def __init__(self, user_id, email, password_hash, is_active,
                  client_id, business_name, abn, delivery_zone,
                  delivery_day1, delivery_day2, delivery_charge,
                  internal_notes=None, login_at=None):
-        """Construct a Client from an already-validated, joined users+clients row.
-        `role` is fixed to 'client' rather than accepted as a parameter, so it's
-        impossible to construct a Client instance with the wrong role by mistake."""
         super().__init__(user_id, email, password_hash, role="client",
                           is_active=is_active, login_at=login_at)
 
@@ -42,57 +26,46 @@ class Client(User):
 
     # ---- read-only accessors --------------------------------------------
 
+    # Primary key on the `clients` table -- the FK target used by orders, invoices, etc.
     @property
     def client_id(self):
-        """Primary key on the `clients` table -- the FK target used by orders, invoices, etc."""
         return self._client_id
 
+    # Trading name shown on invoices, dashboards, and delivery dockets.
     @property
     def business_name(self):
-        """Trading name shown on invoices, dashboards, and delivery dockets."""
         return self._business_name
 
+    # 11-digit Australian Business Number. Required for invoice compliance.
     @property
     def abn(self):
-        """11-digit Australian Business Number. Required for invoice compliance."""
         return self._abn
 
+    # One of Western | Northern | Eastern | Southern -- drives FR-B1/production routing.
     @property
     def delivery_zone(self):
-        """One of Western | Northern | Eastern | Southern -- drives FR-B1/production routing."""
         return self._delivery_zone
 
+    # Tuple of this client's two fixed weekly delivery days (FR-B1).
     @property
     def delivery_days(self):
-        """Tuple of this client's two fixed weekly delivery days (FR-B1)."""
         return (self._delivery_day1, self._delivery_day2)
 
+    # Flat per-order delivery fee for this client. GST applies to this line only (FR-D1).
     @property
     def delivery_charge(self):
-        """Flat per-order delivery fee for this client. GST applies to this line only (FR-D1)."""
         return self._delivery_charge
 
+    # Owner-only annotation about this client. Must never be rendered in the client portal.
     @property
     def internal_notes(self):
-        """Owner-only annotation about this client. Must never be rendered in the client portal."""
         return self._internal_notes
 
     # ---- construction from the database ----------------------------------
 
+    # Builds a Client by joining users+clients on user_id. Reuses `connection` if given.
     @classmethod
     def load_by_user_id(cls, user_id, connection=None):
-        """
-        Builds a Client by joining `users` and `clients` on user_id.
-
-        Called from User.authenticate() once it knows role == 'client', and
-        reused directly by Module 7 (Clients Management) whenever a client
-        needs to be loaded outside of a login attempt.
-
-        Accepts an optional existing `connection` so authenticate() can
-        reuse the connection it already opened instead of every layer
-        opening its own; when no connection is supplied, this method opens
-        and closes one itself so it also works as a standalone call.
-        """
         owns_connection = connection is None
         if connection is None:
             connection = get_db_connection()
@@ -130,16 +103,8 @@ class Client(User):
 
     # ---- ordering (FR-B1/B2) --------------------------------------------
 
+    # FR-B2: only approved products show up here (joined through client_products).
     def get_approved_products(self):
-        """
-        FR-B2: the products this client is allowed to see and order, with
-        their agreed price/pack size for this client specifically.
-
-        Joins through client_products rather than querying `products`
-        directly -- a product this client has no client_products row for
-        must never appear here, since that row is the only thing that
-        marks a product as approved for them.
-        """
         connection = get_db_connection()
         try:
             return connection.execute(
@@ -158,13 +123,8 @@ class Client(User):
 
     # ---- session -----------------------------------------------------
 
+    # Also stores client_id -- routes need it without an extra query.
     def get_session(self):
-        """
-        Extends User.get_session() to also store client_id: every client
-        route (Modules 3 and 10) filters queries by clientID, so it needs
-        to be available from the session directly rather than re-derived
-        from user_id with an extra database query on every request.
-        """
         session_data = super().get_session()
         session_data["client_id"] = self._client_id
         return session_data

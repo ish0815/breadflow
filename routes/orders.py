@@ -1,7 +1,4 @@
-"""
-routes/orders.py -- Module B: client order placement (FR-B1/B2/B3) and the
-owner's pending-order approval queue (FR-B4).
-"""
+# routes/orders.py -- Module B: order placement (FR-B1/B2/B3) + owner approval queue (FR-B4).
 
 import datetime
 
@@ -17,9 +14,8 @@ orders_bp = Blueprint("orders", __name__)
 DELIVERY_DATE_WEEKS_AHEAD = 8
 
 
+# Future occurrences of `assigned_days`, soonest first.
 def _upcoming_delivery_dates(assigned_days):
-    """Every future occurrence of `assigned_days` over the next
-    DELIVERY_DATE_WEEKS_AHEAD weeks, soonest first."""
     today = datetime.date.today()
     dates = []
     for offset in range(1, DELIVERY_DATE_WEEKS_AHEAD * 7 + 1):
@@ -29,18 +25,15 @@ def _upcoming_delivery_dates(assigned_days):
     return dates
 
 
+# Stub for FR-B4's client notification email -- real SMTP comes later.
 def _notify_client_order_status(order_id, status):
-    """Stub for FR-B4's client notification email. Flask-Mail/SMTP wiring
-    is a later task -- this only marks where that call goes."""
     print(f"[stub email] order {order_id} -> client notified: {status}")
 
 
+# FR-B1/B2/B3: GET renders the order form, POST places it via Order.place().
 @orders_bp.route("/client/order", methods=["GET", "POST"])
 @login_required("client")
 def client_order_form():
-    """FR-B1/B2/B3: the client's order form. GET renders it; POST validates
-    and places the order via Order.place(), which owns every FR-B1 rule
-    (approved products, positive-integer quantities, assigned delivery day)."""
     client = Client.load_by_user_id(session["user_id"])
     approved_products = client.get_approved_products()
     delivery_dates = _upcoming_delivery_dates(client.delivery_days)
@@ -70,12 +63,10 @@ def client_order_form():
     return redirect(url_for("orders.client_order_form"))
 
 
+# FR-B4: simple pending queue. Full filter/search view is Module 6, later.
 @orders_bp.route("/owner/orders/pending")
 @login_required("owner")
 def owner_pending_orders():
-    """FR-B4: the owner's simple pending-approval queue. The fuller
-    filter/search/paginated all-orders view (Module 6) is a separate,
-    later screen -- this one only ever shows orders awaiting a decision."""
     return render_template("owner_orders_pending.html", orders=Order.get_pending())
 
 

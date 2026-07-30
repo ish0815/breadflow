@@ -1,11 +1,4 @@
-"""
-app.py -- BreadFlow Flask application entry point.
-
-Currently wires up Module 1 (Login) only: registers the auth Blueprint
-(routes/auth.py), the session configuration FR-A1 depends on, and one
-stub landing route per role (Modules 2/3/4 replace these stubs with the
-real Owner/Client/Driver portals).
-"""
+# app.py -- Flask entry point: registers blueprints, session config, dashboard stubs.
 
 import os
 from datetime import timedelta
@@ -29,18 +22,15 @@ app.config["SECRET_KEY"] = os.environ.get("BREADFLOW_SECRET_KEY", "dev-only-inse
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=8)
 
 
+# No anonymous dashboard -- always redirect to login.
 @app.route("/")
 def index():
-    """No dashboard exists to land on anonymously, so root always
-    forwards to the login page."""
     return redirect(url_for("auth.login"))
 
 
+# FR-A3: wrong-role access lands here, not back at login.
 @app.errorhandler(403)
 def forbidden(_exc):
-    """FR-A3: an authenticated session with the wrong role for this route
-    (routes/auth.py's login_required) lands here instead of being bounced
-    back to a login form it's already signed into."""
     return render_template("403.html"), 403
 
 

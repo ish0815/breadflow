@@ -1,6 +1,4 @@
-"""
-models/order.py -- Order: a client's order and its FR-B1/FR-B4 lifecycle.
-"""
+# models/order.py -- Order: a client's order and its FR-B1/FR-B4 lifecycle.
 
 import datetime
 
@@ -13,24 +11,18 @@ WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", 
 MAX_SPECIAL_INSTRUCTIONS_LENGTH = 300  # data dictionary: "Max 300 chars"
 
 
+# FR-B1 validation failure: bad quantity, no products, or wrong delivery day.
 class OrderValidationError(Exception):
-    """Raised when a submitted order fails one of FR-B1's validation rules
-    (bad quantity, no products selected, or a delivery date that isn't one
-    of the client's two assigned days)."""
+    pass
 
 
+# approve()/reject() called on an order that's no longer pending.
 class OrderStateError(Exception):
-    """Raised when approve()/reject() targets an order that isn't pending
-    any more -- e.g. a double-click or a second browser tab acting on an
-    order the owner already approved."""
+    pass
 
 
+# A client's order (FR-B1), pending owner approval (FR-B4).
 class Order:
-    """
-    An order placed by a client (FR-B1), pending the owner's approval or
-    rejection (FR-B4). Mirrors the `orders` table: no delivery_charge/GST/
-    total columns -- see schema.sql for why those are computed, not stored.
-    """
 
     def __init__(self, order_id, client_id, delivery_date, order_status,
                  special_instructions, order_created_at, approved_by=None, approved_at=None):
@@ -65,19 +57,9 @@ class Order:
 
     # ---- placing an order (FR-B1) -----------------------------------------
 
+    # FR-B1: validates and inserts a new order + its lines. raw_quantities: {product_id: form_string}.
     @classmethod
     def place(cls, client, delivery_date, raw_quantities, special_instructions=""):
-        """
-        FR-B1: validate and insert a new order plus its order_lines.
-
-        `raw_quantities` is {product_id: raw_form_string}, exactly as
-        submitted -- one entry per product on the client's approved
-        catalogue, most of them blank/"0" for products not being ordered
-        this time. Parsing and range-checking each one here (rather than
-        trusting the route to have already done it) means this method is
-        the one place FR-B1's quantity rule is enforced, regardless of
-        which route calls it.
-        """
         special_instructions = (special_instructions or "").strip()
         if len(special_instructions) > MAX_SPECIAL_INSTRUCTIONS_LENGTH:
             raise OrderValidationError(
@@ -135,11 +117,9 @@ class Order:
         finally:
             connection.close()
 
+    # FR-B1/B3: must be a future date on one of the client's 2 assigned weekdays, no upper bound.
     @staticmethod
     def _is_valid_delivery_date(delivery_date, assigned_days):
-        """FR-B1: the date must be a real future calendar date that falls on
-        one of the client's 2 assigned weekdays. FR-B3 deliberately places
-        no upper bound on how far ahead it can be."""
         try:
             parsed = datetime.date.fromisoformat(delivery_date)
         except (TypeError, ValueError):
@@ -150,9 +130,8 @@ class Order:
 
     # ---- reading an order back ---------------------------------------------
 
+    # This order's OrderLine objects, joined with product_name for display.
     def get_order_lines(self):
-        """Returns this order's OrderLine objects, joined with product_name
-        for display (e.g. the owner's pending orders list)."""
         connection = get_db_connection()
         try:
             rows = connection.execute(
@@ -173,20 +152,13 @@ class Order:
             for row in rows
         ]
 
+    # SUM(qty x unitPrice) across lines -- excludes delivery/GST (added at invoicing, FR-D1).
     def calculate_total(self):
-        """SUM(quantity x unitPrice) across this order's lines -- the data
-        dictionary's totalValue. Deliberately excludes delivery/GST: those
-        are only added at the invoicing stage (FR-D1, a later module)."""
         return sum(line.calculate_line_total() for line in self.get_order_lines())
 
+    # FR-B4: pending orders queue, oldest delivery date first, as display-ready dicts.
     @classmethod
     def get_pending(cls):
-        """FR-B4: the owner's pending-approval queue, oldest delivery date
-        first. Returns display-ready dicts (not bare Order objects) since
-        every consumer of this list (the pending orders template) needs the
-        client's business name and product summary alongside the order --
-        exactly what the IPO chart's "DISPLAY orderID, clientName,
-        deliveryDate, products, totalValue" describes as one row."""
         connection = get_db_connection()
         try:
             rows = connection.execute(

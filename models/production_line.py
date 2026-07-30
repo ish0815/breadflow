@@ -1,14 +1,8 @@
-"""
-models/production_line.py -- ProductionLine: one product's aggregated
-total within a generated production list (FR-C1/FR-C2).
-"""
+# models/production_line.py -- ProductionLine: one product's total in a production list (FR-C1/C2).
 
 
+# One product's total_ordered, buffer, and produce_qty. No client info.
 class ProductionLine:
-    """One row of a generated production list: a product, its aggregated
-    approved-order total, the 10% buffer, and the final quantity to
-    produce. Deliberately carries no client information -- see
-    schema.sql's production_lines comment."""
 
     def __init__(self, product_id, product_name, total_ordered, buffer_qty, produce_qty):
         self._product_id = product_id

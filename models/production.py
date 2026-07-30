@@ -1,7 +1,4 @@
-"""
-models/production.py -- ProductionList: FR-C1/FR-C2 daily production
-aggregation, grouped by product only, never by client.
-"""
+# models/production.py -- ProductionList: FR-C1/FR-C2 daily production totals, by product only.
 
 import math
 
@@ -9,12 +6,8 @@ from database.db import get_db_connection
 from models.production_line import ProductionLine
 
 
+# Generated production list for one date: header stats + one ProductionLine per product.
 class ProductionList:
-    """
-    The generated production list for one delivery date: header stats
-    (how many approved orders/distinct clients it covers, and when it was
-    generated) plus one ProductionLine per product.
-    """
 
     def __init__(self, production_list_id, production_date, generated_by, generated_at,
                  approved_order_count, total_client_count, lines):
@@ -48,19 +41,10 @@ class ProductionList:
 
     # ---- generation (FR-C1/FR-C2) ------------------------------------------
 
+    # FR-C1/C2: GROUP BY/SUM approved orders into per-product lines, logs the event.
+    # Returns None (no audit row) if there are no approved orders for this date.
     @classmethod
     def generate(cls, production_date, owner_id):
-        """
-        Aggregates every approved order for `production_date` into one row
-        per product (GROUP BY/SUM, left to SQLite rather than summed by
-        hand in Python -- NF-03 makes the aggregation itself the part that
-        most needs to be trustworthy), and logs the generation event.
-
-        Returns None -- not an empty list -- when there are no approved
-        orders for this date, matching the pseudocode's own STOP before
-        the INSERT INTO production_lists step: idly checking a quiet day
-        never writes a meaningless audit row.
-        """
         connection = get_db_connection()
         try:
             header = connection.execute(
@@ -125,22 +109,16 @@ class ProductionList:
         finally:
             connection.close()
 
+    # FR-C2: 10% buffer, rounded up -- plain rounding could drop small totals to 0.
     @staticmethod
     def _apply_buffer(total_ordered):
-        """FR-C2: 10% buffer, rounded UP to a whole unit. Bread Staple's
-        existing manual practice always rounds up (Criterion 2 interview) --
-        a bakery can't produce half a loaf, and plain rounding would drop
-        small totals' buffer to 0 (e.g. 3 x 10% = 0.3), defeating the
-        safety margin the buffer exists for."""
         return math.ceil(total_ordered * 0.10)
 
     # ---- date picker support ------------------------------------------------
 
+    # Distinct delivery dates with any order -- populates the date picker.
     @classmethod
     def get_dates_with_orders(cls):
-        """Every distinct delivery date with at least one order, any
-        status -- populates the production list's date picker so the
-        owner only ever chooses a date that's actually relevant."""
         connection = get_db_connection()
         try:
             rows = connection.execute(

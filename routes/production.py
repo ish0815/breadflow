@@ -1,8 +1,4 @@
-"""
-routes/production.py -- Module C: daily production list generation and
-display (FR-C1, FR-C2). On-screen only for now -- PDF export via
-ReportLab is a follow-up once this aggregation is verified correct.
-"""
+# routes/production.py -- Module C: production list display (FR-C1/C2). On-screen only, PDF later.
 
 import datetime
 
@@ -14,12 +10,10 @@ from routes.auth import login_required
 production_bp = Blueprint("production", __name__)
 
 
+# FR-C1: defaults to today; date picker only offers dates with orders.
 @production_bp.route("/owner/production")
 @login_required("owner")
 def production_list_view():
-    """FR-C1: defaults to today; the date dropdown is restricted to dates
-    that actually have orders (plus today itself), not a free calendar --
-    any other date is guaranteed to show nothing."""
     requested_date = request.args.get("date", "")
     try:
         production_date = datetime.date.fromisoformat(requested_date).isoformat()

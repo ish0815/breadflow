@@ -1,10 +1,4 @@
-"""
-routes/auth.py -- Module 1: login, logout, and the FR-A3 RBAC decorator.
-
-Its own Blueprint rather than routes living directly in app.py, so each
-later module (Owner/Client/Driver portals) can add its own routes/<module>.py
-registered the same way, instead of app.py growing indefinitely.
-"""
+# routes/auth.py -- Module 1: login, logout, and the FR-A3 RBAC decorator.
 
 from functools import wraps
 
@@ -31,27 +25,10 @@ DASHBOARD_ENDPOINT = {
 }
 
 
+# FR-A1: GET renders the form, POST validates via User.authenticate().
+# Redirect uses account.role from the DB, never the submitted tab.
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
-    """
-    FR-A1: role-based login.
-
-    GET renders the form. POST validates the submission and delegates
-    every existence/type/range/format/credential check to
-    User.authenticate(), which already implements the full FR-A1
-    pseudocode (empty-field, format, invalid-credential, and
-    deactivated-account branches).
-
-    The role tab is validated as a required field here (data dictionary:
-    "Must be one of: owner | client | driver") so an impossible
-    submission is rejected before touching the database -- but it is
-    deliberately NOT used to choose the post-login redirect. That
-    decision always comes from `account.role`, read back from the
-    authenticated database row, matching the FR-A1 pseudocode's
-    `session['role'] <- userRecord.role` exactly. Trusting the submitted
-    tab instead would let a forged form field claim a role the account
-    doesn't actually have.
-    """
     if request.method == "GET":
         if session.get("user_id"):
             return redirect(url_for(DASHBOARD_ENDPOINT[session["role"]]))
@@ -84,25 +61,15 @@ def login():
     return redirect(url_for(DASHBOARD_ENDPOINT[account.role]))
 
 
+# Ends the session immediately, regardless of the 8-hour expiry.
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
-    """Ends the current session immediately, regardless of the 8-hour expiry."""
     session.clear()
     return redirect(url_for("auth.login"))
 
 
+# FR-A3: no session -> redirect to login; wrong role -> 403.
 def login_required(role):
-    """
-    Decorator factory enforcing FR-A3 role-based access control on a route.
-
-    Two distinct failure cases, so the message actually matches what
-    happened: no session at all sends the visitor to /login (they just
-    need to sign in), but a session that IS authenticated for a
-    *different* role -- e.g. a client session hitting an owner-only
-    route by guessing the URL -- aborts with 403 instead, since sending
-    them back to a login form they're already logged into would be
-    misleading.
-    """
     def decorator(view_func):
         @wraps(view_func)
         def wrapped(*args, **kwargs):
