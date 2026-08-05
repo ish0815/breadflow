@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Invoices - BreadFlow{% endblock %}
+
+{% block body %}
+<div class="order-page">
+    <header class="order-header">
+        <h1>Invoices</h1>
+        <p class="order-subtext">{{ client.business_name }}</p>
+    </header>
+
+    <main class="order-form-wrap">
+        {% if not invoices %}
+        <p>No invoices yet.</p>
+        {% else %}
+        <div class="client-table-wrap">
+            <table class="client-table">
+                <thead>
+                    <tr>
+                        <th>Invoice</th>
+                        <th>Period</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for invoice in invoices %}
+                    <tr>
+                        <td>{{ invoice.display_id }}</td>
+                        <td>{{ invoice.billing_period_start }} to {{ invoice.billing_period_end }}</td>
+                        <td>${{ "%.2f"|format(invoice.invoice_total) }}</td>
+                        <td>
+                            <span class="status-pill status-{{ invoice.invoice_status }}">
+                                {{ invoice.invoice_status|capitalize }}
+                            </span>
+                        </td>
+                        <td>
+                            <a class="btn-inline" href="{{ url_for('invoices.client_invoice_pdf', invoice_id=invoice.invoice_id) }}">PDF</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}

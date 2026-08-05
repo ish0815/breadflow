@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Invoices - BreadFlow{% endblock %}
+
+{% block body %}
+<div class="order-page">
+    <header class="order-header">
+        <h1>Invoices</h1>
+        <p class="order-subtext">{{ invoices|length }} total</p>
+    </header>
+
+    <main class="order-form-wrap">
+        <form method="post" action="{{ url_for('invoices.owner_invoices') }}" class="invoice-period-form">
+            <div class="field">
+                <label for="period_start">Billing period start</label>
+                <input type="date" id="period_start" name="period_start" required>
+            </div>
+            <div class="field">
+                <label for="period_end">Billing period end</label>
+                <input type="date" id="period_end" name="period_end" required>
+            </div>
+            <button type="submit" class="btn-primary btn-inline">Generate All Invoices</button>
+        </form>
+
+        {% if not invoices %}
+        <p>No invoices generated yet.</p>
+        {% else %}
+        <div class="production-info-bar">
+            <span>{{ invoices|length }} invoice(s)</span>
+            <span>${{ "%.2f"|format(invoices|sum(attribute="invoice_total")) }} total billed</span>
+            <span>${{ "%.2f"|format(invoices|sum(attribute="gst_amount")) }} GST collected</span>
+        </div>
+
+        <form method="post" action="{{ url_for('invoices.send_all_invoices') }}" class="invoice-send-all-form">
+            <button type="submit" class="btn-primary btn-inline">Email All</button>
+        </form>
+
+        <div class="client-table-wrap">
+            <table class="client-table">
+                <thead>
+                    <tr>
+                        <th>Invoice</th>
+                        <th>Client</th>
+                        <th>Period</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for invoice in invoices %}
+                    <tr>
+                        <td>{{ invoice.display_id }}</td>
+                        <td>{{ invoice.business_name }}</td>
+                        <td>{{ invoice.billing_period_start }} to {{ invoice.billing_period_end }}</td>
+                        <td>${{ "%.2f"|format(invoice.invoice_total) }}</td>
+                        <td>
+                            <span class="status-pill status-{{ invoice.invoice_status }}">
+                                {{ invoice.invoice_status|capitalize }}
+                            </span>
+                        </td>
+                        <td class="invoice-actions">
+                            <a class="btn-inline" href="{{ url_for('invoices.owner_invoice_pdf', invoice_id=invoice.invoice_id) }}">PDF</a>
+                            {% if invoice.invoice_status == 'draft' %}
+                            <form method="post" action="{{ url_for('invoices.send_invoice', invoice_id=invoice.invoice_id) }}">
+                                <button type="submit" class="btn-send">Send</button>
+                            </form>
+                            {% elif invoice.invoice_status == 'sent' %}
+                            <form method="post" action="{{ url_for('invoices.mark_invoice_paid', invoice_id=invoice.invoice_id) }}">
+                                <button type="submit" class="btn-mark-paid">Mark Paid</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}

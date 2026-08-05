@@ -7,6 +7,7 @@ from flask import Flask, redirect, render_template, url_for
 
 from database.db import init_db
 from routes.auth import auth_bp, login_required
+from routes.invoices import invoices_bp
 from routes.orders import orders_bp
 from routes.owner import owner_bp
 from routes.production import production_bp
@@ -16,6 +17,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(orders_bp)
 app.register_blueprint(owner_bp)
 app.register_blueprint(production_bp)
+app.register_blueprint(invoices_bp)
 
 # signs the session cookie so it can't be forged; env var in prod, dev fallback locally
 app.config["SECRET_KEY"] = os.environ.get("BREADFLOW_SECRET_KEY", "dev-only-insecure-key")
@@ -46,6 +48,7 @@ def owner_dashboard():
         (url_for("orders.owner_pending_orders"), "View pending orders"),
         (url_for("production.production_list_view"), "View production list"),
         (url_for("owner.client_list"), "Manage clients"),
+        (url_for("invoices.owner_invoices"), "Manage invoices"),
     ])
 
 
@@ -54,6 +57,7 @@ def owner_dashboard():
 def client_dashboard():
     return render_template("dashboard_stub.html", portal_name="Client", extra_links=[
         (url_for("orders.client_order_form"), "Place an order"),
+        (url_for("invoices.client_invoices"), "View invoices"),
     ])
 
 

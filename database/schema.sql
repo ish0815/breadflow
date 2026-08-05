@@ -29,11 +29,14 @@ CREATE TABLE IF NOT EXISTS clients (
 
 -- Module 12: master product record. Per-client price/pack size live on client_products.
 CREATE TABLE IF NOT EXISTS products (
-    product_id   INTEGER PRIMARY KEY AUTOINCREMENT,
-    product_name TEXT NOT NULL UNIQUE,
-    category     TEXT NOT NULL CHECK (category IN ('Bread', 'Pastry', 'Savoury')),
-    base_price   REAL NOT NULL CHECK (base_price > 0),
-    pack_size    INTEGER NOT NULL CHECK (pack_size > 0)
+    product_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_name   TEXT NOT NULL UNIQUE,
+    category       TEXT NOT NULL CHECK (category IN ('Bread', 'Pastry', 'Savoury')),
+    base_price     REAL NOT NULL CHECK (base_price > 0),
+    pack_size      INTEGER NOT NULL CHECK (pack_size > 0),
+    -- Section 7.2: most bakery goods are ATO GST-exempt food; flag defaults free,
+    -- owner can override per product if a future non-exempt item is added
+    gst_applicable INTEGER NOT NULL DEFAULT 0 CHECK (gst_applicable IN (0, 1))
 );
 
 -- ClientCatalogue (FR-B2): gates what a client can see/order -- no row here, no access.
@@ -88,4 +91,43 @@ CREATE TABLE IF NOT EXISTS production_lines (
     total_ordered       INTEGER NOT NULL CHECK (total_ordered >= 0),
     buffer_qty          INTEGER NOT NULL CHECK (buffer_qty >= 0),
     produce_qty         INTEGER NOT NULL CHECK (produce_qty >= 0)
+);
+
+-- FR-D1 Module 8: one invoice per client per generated billing period, batch-generated
+-- across every client with approved orders in range ("Generate All Invoices").
+CREATE TABLE IF NOT EXISTS invoices (
+    invoice_id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id             INTEGER NOT NULL REFERENCES clients(client_id),
+    billing_period_start  TEXT NOT NULL,
+    billing_period_end    TEXT NOT NULL CHECK (billing_period_end >= billing_period_start),
+    -- GST-free/taxable split is flag-driven per product line (products.gst_applicable),
+    -- not a blanket "products are always GST-free" rule
+    gst_free_subtotal     REAL NOT NULL CHECK (gst_free_subtotal >= 0),
+    -- taxable product lines + delivery_charge_total (delivery is always taxable)
+    taxable_subtotal      REAL NOT NULL CHECK (taxable_subtotal >= 0),
+    -- clients.delivery_charge x approved_order_count -- a flat PER-ORDER fee, and a
+    -- billing period typically spans several of the client's 2 fixed weekly deliveries
+    delivery_charge_total REAL NOT NULL CHECK (delivery_charge_total >= 0),
+    approved_order_count  INTEGER NOT NULL CHECK (approved_order_count >= 0),
+    gst_amount            REAL NOT NULL CHECK (gst_amount >= 0),  -- 10% of taxable_subtotal
+    invoice_total         REAL NOT NULL CHECK (invoice_total >= 0),
+    invoice_status        TEXT NOT NULL DEFAULT 'draft' CHECK (invoice_status IN ('draft', 'sent', 'paid')),
+    pdf_path              TEXT,  -- set once export_to_pdf() writes the file
+    generated_by          INTEGER NOT NULL REFERENCES users(user_id),
+    generated_at          TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%S', 'now')),
+    sent_at               TEXT  -- null until owner sends/emails (draft -> sent)
+);
+
+-- One row per (product, unit_price) aggregated across the client's approved orders
+-- in the period -- grouped by price too, not just product, so a mid-period agreed_price
+-- change can't silently blend two different prices into one wrong-total line (NF03).
+CREATE TABLE IF NOT EXISTS invoice_lines (
+    invoice_line_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    invoice_id      INTEGER NOT NULL REFERENCES invoices(invoice_id) ON DELETE CASCADE,
+    product_id      INTEGER NOT NULL REFERENCES products(product_id),
+    quantity        INTEGER NOT NULL CHECK (quantity > 0),
+    unit_price      REAL NOT NULL CHECK (unit_price > 0),
+    -- snapshot of products.gst_applicable at generation time -- a later flag change
+    -- must never retroactively alter an already-generated invoice
+    gst_applicable  INTEGER NOT NULL CHECK (gst_applicable IN (0, 1))
 );

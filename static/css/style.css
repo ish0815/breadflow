@@ -198,7 +198,8 @@ body {
 
 .field input[type="email"],
 .field input[type="password"],
-.field input[type="text"] {
+.field input[type="text"],
+.field input[type="date"] {
     width: 100%;
     padding: 10px 12px;
     border: 1px solid var(--border);
@@ -847,4 +848,78 @@ body {
 
 .btn-cancel:hover {
     color: var(--navy);
+}
+
+/* ---- invoices (Module D) -------------------------------------------------- */
+
+.invoice-period-form {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+}
+
+.invoice-period-form .field {
+    margin-bottom: 0;
+}
+
+.invoice-send-all-form {
+    margin-bottom: 18px;
+}
+
+/* draft = gold, matches .status-pending's urgency tone;
+   sent = navy, in progress -- distinct from teal's "resolved" meaning below;
+   paid = teal, matches .status-active's resolved/success tone */
+.status-draft {
+    background: #FBF0DA;
+    color: #8A6A1F;
+}
+
+.status-sent {
+    background: #E7EAF2;
+    color: var(--navy);
+}
+
+.status-paid {
+    background: #E7F4F1;
+    color: var(--teal-dark);
+}
+
+.invoice-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.invoice-actions form {
+    margin: 0;
+}
+
+.btn-send,
+.btn-mark-paid {
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+}
+
+.btn-send {
+    background: var(--navy);
+    color: #fff;
+}
+
+.btn-send:hover {
+    background: var(--navy-light);
+}
+
+.btn-mark-paid {
+    background: var(--teal);
+    color: #fff;
+}
+
+.btn-mark-paid:hover {
+    background: var(--teal-dark);
 }

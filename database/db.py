@@ -18,9 +18,23 @@ def get_db_connection():
     return connection
 
 
+# Adds products.gst_applicable to a pre-existing DB (SQLite has no ADD COLUMN IF
+# NOT EXISTS). Safe every startup -- checks table_info first, no-ops if present.
+def _migrate_products_gst_applicable(connection):
+    columns = {row["name"] for row in connection.execute("PRAGMA table_info(products)")}
+    if "gst_applicable" in columns:
+        return
+    connection.execute(
+        "ALTER TABLE products ADD COLUMN gst_applicable INTEGER NOT NULL DEFAULT 0 "
+        "CHECK (gst_applicable IN (0, 1))"
+    )
+    connection.commit()
+
+
 # Runs schema.sql. Safe on every startup -- all CREATE TABLEs use IF NOT EXISTS.
 def init_db():
     connection = get_db_connection()
     with open(SCHEMA_PATH, "r", encoding="utf-8") as schema_file:
         connection.executescript(schema_file.read())
+    _migrate_products_gst_applicable(connection)
     connection.close()
