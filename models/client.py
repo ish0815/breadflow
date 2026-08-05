@@ -1,7 +1,22 @@
 # models/client.py -- Client subclass of User; business fields live in the clients table.
 
+import re
+import sqlite3
+
+import bcrypt
+
 from database.db import get_db_connection
-from models.user import User
+from models.order import WEEKDAYS
+from models.user import EMAIL_PATTERN, MAX_EMAIL_LENGTH, MAX_PASSWORD_BYTES, MIN_PASSWORD_LENGTH, User
+
+ZONES = ("Western", "Northern", "Eastern", "Southern")  # matches clients.delivery_zone CHECK
+ABN_PATTERN = re.compile(r"^\d{11}$")
+MAX_BUSINESS_NAME_LENGTH = 100  # data dictionary: "Max 100 chars"
+
+
+# FR-A2 registration failure: bad input, or a uniqueness clash on email/business_name/abn.
+class ClientValidationError(Exception):
+    pass
 
 
 # A User (role='client') plus their clients-table row: ABN, delivery zone/days/charge, notes.
@@ -92,7 +107,60 @@ class Client(User):
             # integrity bug if this happens -- fail loudly, don't return None
             raise ValueError(f"No clients row found for user_id={user_id}")
 
-        return cls(
+        return cls._from_joined_row(row)
+
+    # Builds a Client by joining users+clients on clients.client_id (Module 7: list/deactivate).
+    @classmethod
+    def load_by_client_id(cls, client_id):
+        connection = get_db_connection()
+        try:
+            row = connection.execute(
+                """
+                SELECT users.user_id, users.email, users.password_hash, users.is_active,
+                       users.login_at,
+                       clients.client_id, clients.business_name, clients.abn,
+                       clients.delivery_zone, clients.delivery_day1, clients.delivery_day2,
+                       clients.delivery_charge, clients.internal_notes
+                FROM users
+                JOIN clients ON clients.user_id = users.user_id
+                WHERE clients.client_id = ?
+                """,
+                (client_id,),
+            ).fetchone()
+        finally:
+            connection.close()
+
+        if row is None:
+            raise ValueError(f"No clients row found for client_id={client_id}")
+
+        return cls._from_joined_row(row)
+
+    # Module 7: owner's client list -- every client, A-Z by business name.
+    @classmethod
+    def list_all(cls):
+        connection = get_db_connection()
+        try:
+            rows = connection.execute(
+                """
+                SELECT users.user_id, users.email, users.password_hash, users.is_active,
+                       users.login_at,
+                       clients.client_id, clients.business_name, clients.abn,
+                       clients.delivery_zone, clients.delivery_day1, clients.delivery_day2,
+                       clients.delivery_charge, clients.internal_notes
+                FROM users
+                JOIN clients ON clients.user_id = users.user_id
+                ORDER BY clients.business_name ASC
+                """
+            ).fetchall()
+        finally:
+            connection.close()
+
+        return [cls._from_joined_row(row) for row in rows]
+
+    # Shared users+clients row -> Client builder, used by all three loaders above.
+    @staticmethod
+    def _from_joined_row(row):
+        return Client(
             user_id=row["user_id"], email=row["email"], password_hash=row["password_hash"],
             is_active=row["is_active"], client_id=row["client_id"],
             business_name=row["business_name"], abn=row["abn"],
@@ -100,6 +168,106 @@ class Client(User):
             delivery_day2=row["delivery_day2"], delivery_charge=row["delivery_charge"],
             internal_notes=row["internal_notes"], login_at=row["login_at"],
         )
+
+    # ---- registration (FR-A2/FR-B2) --------------------------------------
+
+    # Owner-side client registration: creates the users+clients rows and the initial
+    # product catalogue in one transaction. Raises ClientValidationError on any bad
+    # input, including uniqueness clashes (email/business_name/abn) caught from the DB.
+    @classmethod
+    def create(cls, business_name, abn, email, temp_password, delivery_zone,
+               delivery_day1, delivery_day2, delivery_charge, product_selections,
+               internal_notes=None):
+        business_name = (business_name or "").strip()
+        abn = (abn or "").strip()
+        email = (email or "").strip()
+        internal_notes = (internal_notes or "").strip() or None
+
+        # -- existence / type ------------------------------------------------
+        if not business_name or not abn or not email or not temp_password:
+            raise ClientValidationError("Please fill in all required fields")
+        if not isinstance(product_selections, list) or not product_selections:
+            raise ClientValidationError("Select at least one approved product")
+
+        # -- range / reasonableness ------------------------------------------
+        if len(business_name) > MAX_BUSINESS_NAME_LENGTH:
+            raise ClientValidationError("Business name is too long")
+        if len(email) > MAX_EMAIL_LENGTH:
+            raise ClientValidationError("Enter a valid email address")
+        if len(temp_password) < MIN_PASSWORD_LENGTH:
+            raise ClientValidationError(f"Temporary password must be at least {MIN_PASSWORD_LENGTH} characters")
+        if len(temp_password.encode("utf-8")) > MAX_PASSWORD_BYTES:
+            raise ClientValidationError("Temporary password is too long")
+
+        # -- format -----------------------------------------------------
+        if not EMAIL_PATTERN.match(email):
+            raise ClientValidationError("Enter a valid email address")
+        if not ABN_PATTERN.match(abn):
+            raise ClientValidationError("ABN must be exactly 11 digits")
+        if delivery_zone not in ZONES:
+            raise ClientValidationError("Select a valid delivery zone")
+        if delivery_day1 not in WEEKDAYS or delivery_day2 not in WEEKDAYS:
+            raise ClientValidationError("Select valid delivery days")
+        if delivery_day1 == delivery_day2:
+            raise ClientValidationError("Delivery days must be different")
+
+        try:
+            delivery_charge = float(delivery_charge)
+        except (TypeError, ValueError):
+            raise ClientValidationError("Enter a valid delivery charge")
+        if delivery_charge <= 0:
+            raise ClientValidationError("Delivery charge must be greater than zero")
+
+        for selection in product_selections:
+            if selection["agreed_price"] <= 0 or selection["pack_size"] <= 0:
+                raise ClientValidationError("Product prices and pack sizes must be greater than zero")
+
+        # -- persist -----------------------------------------------------
+        password_hash = bcrypt.hashpw(temp_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+        connection = get_db_connection()
+        try:
+            user_cursor = connection.execute(
+                "INSERT INTO users (email, password_hash, role) VALUES (?, ?, 'client')",
+                (email, password_hash),
+            )
+            new_user_id = user_cursor.lastrowid
+
+            client_cursor = connection.execute(
+                """
+                INSERT INTO clients (user_id, business_name, abn, delivery_zone,
+                                      delivery_day1, delivery_day2, delivery_charge, internal_notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (new_user_id, business_name, abn, delivery_zone, delivery_day1,
+                 delivery_day2, delivery_charge, internal_notes),
+            )
+            new_client_id = client_cursor.lastrowid
+
+            for selection in product_selections:
+                connection.execute(
+                    """
+                    INSERT INTO client_products (client_id, product_id, agreed_price, pack_size)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (new_client_id, selection["product_id"], selection["agreed_price"], selection["pack_size"]),
+                )
+
+            connection.commit()
+        except sqlite3.IntegrityError as exc:
+            connection.rollback()
+            message = str(exc)
+            if "users.email" in message:
+                raise ClientValidationError("That email address is already registered")
+            if "clients.business_name" in message:
+                raise ClientValidationError("That business name is already registered")
+            if "clients.abn" in message:
+                raise ClientValidationError("That ABN is already registered")
+            raise ClientValidationError("Could not save this client -- check the entered details")
+        finally:
+            connection.close()
+
+        return cls.load_by_user_id(new_user_id)
 
     # ---- ordering (FR-B1/B2) --------------------------------------------
 

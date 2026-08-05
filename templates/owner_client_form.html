@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Add New Client - BreadFlow{% endblock %}
+
+{% block body %}
+<div class="order-page">
+    <header class="order-header">
+        <h1>Add New Client</h1>
+        <p class="order-subtext">All fields marked * are required.</p>
+    </header>
+
+    <main class="client-form-wrap">
+        {% if error %}
+        <div class="error-banner" role="alert">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('owner.add_client') }}" novalidate>
+            <h2 class="form-section-title">Account Details</h2>
+
+            <div class="field">
+                <label for="business_name">Business Name *</label>
+                <input type="text" id="business_name" name="business_name" maxlength="100"
+                       placeholder="e.g. Cafe Mecca" value="{{ form_data.get('business_name', '') }}">
+            </div>
+
+            <div class="field">
+                <label for="abn">ABN *</label>
+                <input type="text" id="abn" name="abn" maxlength="11"
+                       placeholder="e.g. 12345678901" value="{{ form_data.get('abn', '') }}">
+            </div>
+
+            <div class="field">
+                <label for="email">Email Address *</label>
+                <input type="email" id="email" name="email" maxlength="254"
+                       placeholder="e.g. owner@cafemecca.com.au" value="{{ form_data.get('email', '') }}">
+            </div>
+
+            <div class="field">
+                <label for="temp_password">Temporary Password *</label>
+                <input type="text" id="temp_password" name="temp_password" maxlength="72"
+                       placeholder="At least 8 characters" value="{{ form_data.get('temp_password', '') }}">
+            </div>
+
+            <h2 class="form-section-title">Delivery Configuration</h2>
+
+            <div class="field">
+                <label for="delivery_zone">Delivery Zone *</label>
+                <select id="delivery_zone" name="delivery_zone">
+                    <option value="" disabled {% if not form_data.get('delivery_zone') %}selected{% endif %}>Select zone</option>
+                    {% for zone in zones %}
+                    <option value="{{ zone }}" {% if form_data.get('delivery_zone') == zone %}selected{% endif %}>{{ zone }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="delivery_day1">Delivery Day 1 *</label>
+                <select id="delivery_day1" name="delivery_day1">
+                    {% for day in weekdays %}
+                    <option value="{{ day }}" {% if form_data.get('delivery_day1') == day %}selected{% endif %}>{{ day }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="delivery_day2">Delivery Day 2 *</label>
+                <select id="delivery_day2" name="delivery_day2">
+                    {% for day in weekdays %}
+                    <option value="{{ day }}" {% if form_data.get('delivery_day2') == day %}selected{% endif %}>{{ day }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="delivery_charge">Delivery Charge ($) *</label>
+                <input type="number" id="delivery_charge" name="delivery_charge" min="0.01" step="0.01"
+                       placeholder="e.g. 15.00" value="{{ form_data.get('delivery_charge', '') }}">
+            </div>
+
+            <h2 class="form-section-title">Approved Product Catalogue *</h2>
+
+            <div class="catalogue-list">
+                {% for product in products %}
+                <div class="catalogue-row">
+                    <label class="catalogue-check">
+                        <input type="checkbox" name="product_{{ product.product_id }}"
+                               {% if form_data.get('product_' ~ product.product_id) %}checked{% endif %}>
+                        {{ product.product_name }}
+                        <span class="product-meta">{{ product.category }} &middot; base ${{ "%.2f"|format(product.base_price) }}</span>
+                    </label>
+                    <input type="number" min="0.01" step="0.01" class="catalogue-price"
+                           name="price_{{ product.product_id }}" placeholder="Price"
+                           value="{{ form_data.get('price_' ~ product.product_id, '') }}">
+                    <input type="number" min="1" step="1" class="catalogue-pack"
+                           name="pack_{{ product.product_id }}" placeholder="Pack size"
+                           value="{{ form_data.get('pack_' ~ product.product_id, '') }}">
+                </div>
+                {% endfor %}
+            </div>
+
+            <h2 class="form-section-title">Internal Notes (optional)</h2>
+
+            <div class="field">
+                <label for="internal_notes">Owner-only, never shown to the client</label>
+                <textarea id="internal_notes" name="internal_notes" maxlength="500"
+                          placeholder="e.g. 'Prefers early morning delivery'">{{ form_data.get('internal_notes', '') }}</textarea>
+            </div>
+
+            <div class="client-form-actions">
+                <button type="submit" class="btn-primary">Create Client</button>
+                <a class="btn-cancel" href="{{ url_for('owner.client_list') }}">Cancel</a>
+            </div>
+        </form>
+    </main>
+</div>
+{% endblock %}

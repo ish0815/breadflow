@@ -177,3 +177,15 @@ class User:
         finally:
             connection.close()
         self._is_active = False
+
+    # Re-enables the account (Module 7) -- mirrors deactivate().
+    def reactivate(self):
+        connection = get_db_connection()
+        try:
+            connection.execute(
+                "UPDATE users SET is_active = 1 WHERE user_id = ?", (self._user_id,)
+            )
+            connection.commit()
+        finally:
+            connection.close()
+        self._is_active = True

@@ -8,11 +8,13 @@ from flask import Flask, redirect, render_template, url_for
 from database.db import init_db
 from routes.auth import auth_bp, login_required
 from routes.orders import orders_bp
+from routes.owner import owner_bp
 from routes.production import production_bp
 
 app = Flask(__name__)
 app.register_blueprint(auth_bp)
 app.register_blueprint(orders_bp)
+app.register_blueprint(owner_bp)
 app.register_blueprint(production_bp)
 
 # signs the session cookie so it can't be forged; env var in prod, dev fallback locally
@@ -43,6 +45,7 @@ def owner_dashboard():
     return render_template("dashboard_stub.html", portal_name="Owner", extra_links=[
         (url_for("orders.owner_pending_orders"), "View pending orders"),
         (url_for("production.production_list_view"), "View production list"),
+        (url_for("owner.client_list"), "Manage clients"),
     ])
 
 

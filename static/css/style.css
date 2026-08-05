@@ -670,3 +670,181 @@ body {
 .figure-produce {
     color: var(--navy);
 }
+
+/* ---- owner client management (Module 7/11) ------------------------------ */
+
+.client-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+}
+
+/* .btn-primary is a full-width block button elsewhere; this keeps it link-sized here */
+.btn-inline {
+    display: inline-block;
+    width: auto;
+    padding: 10px 18px;
+    text-decoration: none;
+    font-size: 0.95rem;
+}
+
+.client-table-wrap {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px 16px 40px;
+    overflow-x: auto;
+}
+
+.client-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+}
+
+.client-table th,
+.client-table td {
+    text-align: left;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.95rem;
+}
+
+.client-table th {
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+}
+
+.status-active {
+    background: #E7F4F1;
+    color: var(--teal-dark);
+}
+
+.status-inactive {
+    background: var(--error-bg);
+    color: var(--error-red);
+}
+
+.btn-deactivate,
+.btn-reactivate {
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+}
+
+.btn-deactivate {
+    background: var(--error-bg);
+    color: var(--error-red);
+    border: 1px solid var(--error-red);
+}
+
+.btn-deactivate:hover {
+    background: #F6D9D5;
+}
+
+.btn-reactivate {
+    background: var(--teal);
+    color: #fff;
+}
+
+.btn-reactivate:hover {
+    background: var(--teal-dark);
+}
+
+/* ---- add client form (Module 11) ----------------------------------------- */
+
+.client-form-wrap {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 20px 16px 40px;
+}
+
+.client-form-wrap select,
+.client-form-wrap textarea,
+.client-form-wrap input[type="text"],
+.client-form-wrap input[type="email"],
+.client-form-wrap input[type="number"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 1.05rem;
+    font-family: inherit;
+}
+
+.client-form-wrap textarea {
+    resize: vertical;
+    min-height: 70px;
+}
+
+.form-section-title {
+    margin: 28px 0 14px;
+    font-size: 1.1rem;
+    color: var(--navy);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+}
+
+.form-section-title:first-child {
+    margin-top: 0;
+}
+
+.catalogue-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.catalogue-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+}
+
+.catalogue-check {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.catalogue-price,
+.catalogue-pack {
+    width: 90px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.client-form-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 24px;
+}
+
+.client-form-actions .btn-primary {
+    width: auto;
+    padding: 14px 28px;
+}
+
+.btn-cancel {
+    color: var(--text-muted);
+    text-decoration: none;
+}
+
+.btn-cancel:hover {
+    color: var(--navy);
+}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Clients - BreadFlow{% endblock %}
+
+{% block body %}
+<div class="order-page">
+    <header class="order-header client-list-header">
+        <div>
+            <h1>Clients</h1>
+            <p class="order-subtext">{{ clients|length }} total</p>
+        </div>
+        <a class="btn-primary btn-inline" href="{{ url_for('owner.add_client') }}">+ Add New Client</a>
+    </header>
+
+    <main class="client-table-wrap">
+        {% if not clients %}
+        <p>No clients yet.</p>
+        {% else %}
+        <table class="client-table">
+            <thead>
+                <tr>
+                    <th>Business Name</th>
+                    <th>ABN</th>
+                    <th>Email</th>
+                    <th>Zone</th>
+                    <th>Del. Days</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for client in clients %}
+                <tr>
+                    <td>{{ client.business_name }}</td>
+                    <td>{{ client.abn }}</td>
+                    <td>{{ client.email }}</td>
+                    <td>{{ client.delivery_zone }}</td>
+                    <td>{{ client.delivery_days[0] }} / {{ client.delivery_days[1] }}</td>
+                    <td>
+                        {% if client.is_active %}
+                        <span class="status-pill status-active">Active</span>
+                        {% else %}
+                        <span class="status-pill status-inactive">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if client.is_active %}
+                        <form method="post" action="{{ url_for('owner.deactivate_client', client_id=client.client_id) }}">
+                            <button type="submit" class="btn-deactivate">Deactivate</button>
+                        </form>
+                        {% else %}
+                        <form method="post" action="{{ url_for('owner.reactivate_client', client_id=client.client_id) }}">
+                            <button type="submit" class="btn-reactivate">Reactivate</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}
