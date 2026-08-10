@@ -131,3 +131,17 @@ CREATE TABLE IF NOT EXISTS invoice_lines (
     -- must never retroactively alter an already-generated invoice
     gst_applicable  INTEGER NOT NULL CHECK (gst_applicable IN (0, 1))
 );
+
+-- FR-E1/FR-E2 Module 5: one delivery per approved order, assigned to a driver by the
+-- owner. UNIQUE(order_id) -- an order is delivered at most once.
+CREATE TABLE IF NOT EXISTS deliveries (
+    delivery_id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id               INTEGER NOT NULL UNIQUE REFERENCES orders(order_id) ON DELETE CASCADE,
+    driver_id              INTEGER NOT NULL REFERENCES users(user_id),
+    delivery_date          TEXT NOT NULL,
+    delivery_status        TEXT NOT NULL DEFAULT 'pending' CHECK (delivery_status IN ('pending', 'delivered')),
+    proof_photo_path       TEXT,
+    delivered_at           TEXT,
+    -- snapshot of orders.special_instructions at creation -- read-only on driver screen (FR-E1)
+    special_instructions   TEXT CHECK (special_instructions IS NULL OR LENGTH(special_instructions) <= 300)
+);
