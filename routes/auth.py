@@ -21,7 +21,7 @@ VALID_ROLES = set(ROLE_TABS)
 DASHBOARD_ENDPOINT = {
     "owner": "owner_dashboard",
     "client": "client_dashboard",
-    "driver": "driver_dashboard",
+    "driver": "driver.dashboard",   # blueprint endpoint (routes/driver.py)
 }
 
 

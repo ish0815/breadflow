@@ -7,6 +7,7 @@ from flask import Flask, redirect, render_template, url_for
 
 from database.db import init_db
 from routes.auth import auth_bp, login_required
+from routes.driver import driver_bp
 from routes.invoices import invoices_bp
 from routes.orders import orders_bp
 from routes.owner import owner_bp
@@ -18,6 +19,7 @@ app.register_blueprint(orders_bp)
 app.register_blueprint(owner_bp)
 app.register_blueprint(production_bp)
 app.register_blueprint(invoices_bp)
+app.register_blueprint(driver_bp)
 
 # signs the session cookie so it can't be forged; env var in prod, dev fallback locally
 app.config["SECRET_KEY"] = os.environ.get("BREADFLOW_SECRET_KEY", "dev-only-insecure-key")
@@ -59,12 +61,6 @@ def client_dashboard():
         (url_for("orders.client_order_form"), "Place an order"),
         (url_for("invoices.client_invoices"), "View invoices"),
     ])
-
-
-@app.route("/driver/dashboard")
-@login_required("driver")
-def driver_dashboard():
-    return render_template("dashboard_stub.html", portal_name="Driver")
 
 
 if __name__ == "__main__":

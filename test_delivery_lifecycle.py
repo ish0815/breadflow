@@ -1,4 +1,8 @@
-﻿from database.db import get_db_connection
+﻿# test_delivery_lifecycle.py -- Criterion 8 test evidence: Delivery.create/get_by_id/
+# get_by_driver_and_date/mark_delivered + the delivery_status CHECK constraint.
+# Permanent test script -- keep in the repo, do not delete.
+
+from database.db import get_db_connection
 from models.delivery import Delivery, DeliveryValidationError, DeliveryStateError
 
 conn = get_db_connection()

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Driver Dashboard - BreadFlow{% endblock %}
+
+{% block body %}
+<div class="stub-page">
+    <h1>Driver dashboard</h1>
+    <p>Today's deliveries will appear here.</p>
+    <form method="post" action="{{ url_for('auth.logout') }}">
+        <button type="submit">Log out</button>
+    </form>
+</div>
+{% endblock %}
