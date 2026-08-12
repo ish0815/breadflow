@@ -1,4 +1,4 @@
-# routes/auth.py -- Module 1: login, logout, and the FR-A3 RBAC decorator.
+# routes/auth.py -- Module A: login, logout, and the FR-A3 RBAC decorator.
 
 from functools import wraps
 

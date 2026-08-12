@@ -1,8 +1,13 @@
 # test_driver_routing.py -- Criterion 8 test evidence: FR-A3 role routing for the
-# driver portal (login redirect, /driver/dashboard 403 for wrong roles).
+# driver portal (login redirect, /driver/dashboard 403 for wrong roles), plus
+# FR-E1 docket rendering (assigned deliveries vs. empty-day message).
 # Permanent test script -- keep in the repo, do not delete.
 
+from datetime import date
+
 from app import app
+from database.db import get_db_connection
+from models.delivery import Delivery
 
 app.config["TESTING"] = True
 client = app.test_client()
@@ -28,9 +33,8 @@ print("PASS: driver session redirects /login -> /driver/dashboard")
 
 followed = client.get("/driver/dashboard")
 assert followed.status_code == 200, followed.status_code
-assert b"Today's deliveries will appear here" in followed.data
-assert b"Driver dashboard" in followed.data
-print("PASS: /driver/dashboard renders driver_dashboard.html shell (200)")
+assert b"Today's deliveries" in followed.data
+print("PASS: /driver/dashboard renders (200)")
 
 # 2. owner/client sessions must be blocked from /driver/dashboard with 403
 seed_session(OWNER_ID, "owner")
@@ -53,5 +57,44 @@ seed_session(CLIENT_ID, "client")
 response = client.get("/client/dashboard")
 assert response.status_code == 200, response.status_code
 print("PASS: /client/dashboard still 200")
+
+# 4. FR-E1: a delivery assigned to the driver for today shows client/product/
+#    instructions details. Order.place() only allows future dates, so this
+#    order is inserted directly (same approach test_delivery_lifecycle.py
+#    uses for its bogus-status case) rather than going through the form flow.
+TODAY = date.today().isoformat()
+SPECIAL_INSTRUCTIONS = "Leave with the cafe next door if no one answers"
+
+connection = get_db_connection()
+client_row = connection.execute("SELECT client_id, business_name FROM clients LIMIT 1").fetchone()
+product_row = connection.execute("SELECT product_id, product_name FROM products LIMIT 1").fetchone()
+
+order_cursor = connection.execute(
+    "INSERT INTO orders (client_id, delivery_date, order_status, special_instructions) VALUES (?, ?, 'approved', ?)",
+    (client_row["client_id"], TODAY, SPECIAL_INSTRUCTIONS),
+)
+order_id = order_cursor.lastrowid
+connection.execute(
+    "INSERT INTO order_lines (order_id, product_id, quantity, unit_price) VALUES (?, ?, ?, ?)",
+    (order_id, product_row["product_id"], 7, 4.50),
+)
+connection.commit()
+connection.close()
+
+Delivery.create(order_id, DRIVER_ID)
+
+seed_session(DRIVER_ID, "driver")
+response = client.get("/driver/dashboard")
+assert response.status_code == 200, response.status_code
+assert client_row["business_name"].encode() in response.data
+assert product_row["product_name"].encode() in response.data
+assert SPECIAL_INSTRUCTIONS.encode() in response.data
+print("PASS: /driver/dashboard shows client, product, and special instructions for an assigned delivery")
+
+# 5. FR-E1: a date with no deliveries assigned shows the empty-docket message
+response = client.get("/driver/dashboard?date=2099-01-01")
+assert response.status_code == 200, response.status_code
+assert b"No deliveries scheduled" in response.data
+print("PASS: /driver/dashboard shows 'No deliveries scheduled' for a date with no assignments")
 
 print("\nAll checks passed.")

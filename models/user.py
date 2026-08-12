@@ -166,7 +166,7 @@ class User:
 
     # ---- lifecycle -----------------------------------------------------
 
-    # Disables the account (Module 7) -- updates DB and this instance together.
+    # Disables the account (Module A) -- updates DB and this instance together.
     def deactivate(self):
         connection = get_db_connection()
         try:
@@ -178,7 +178,7 @@ class User:
             connection.close()
         self._is_active = False
 
-    # Re-enables the account (Module 7) -- mirrors deactivate().
+    # Re-enables the account (Module A) -- mirrors deactivate().
     def reactivate(self):
         connection = get_db_connection()
         try:

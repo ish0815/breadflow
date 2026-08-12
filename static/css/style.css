@@ -534,7 +534,7 @@ body {
     color: var(--navy);
 }
 
-/* gold = pending/urgency, matches Module 2's stat cards */
+/* gold = pending/urgency, matches Module B's stat cards */
 .status-pill {
     font-size: 0.8rem;
     font-weight: 600;
@@ -672,7 +672,7 @@ body {
     color: var(--navy);
 }
 
-/* ---- owner client management (Module 7/11) ------------------------------ */
+/* ---- owner client management (Module A) ------------------------------ */
 
 .client-list-header {
     display: flex;
@@ -757,7 +757,7 @@ body {
     background: var(--teal-dark);
 }
 
-/* ---- add client form (Module 11) ----------------------------------------- */
+/* ---- add client form (Module A) ----------------------------------------- */
 
 .client-form-wrap {
     max-width: 680px;
@@ -922,4 +922,102 @@ body {
 
 .btn-mark-paid:hover {
     background: var(--teal-dark);
+}
+
+/* ---- driver docket (Module E: FR-E1) ------------------------------------ */
+/* mobile-first: drivers work exclusively on smartphones in the field */
+
+.docket-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.docket-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.docket-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.docket-client {
+    font-weight: 700;
+    color: var(--navy);
+}
+
+.docket-zone {
+    margin: 4px 0;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+}
+
+/* gold banner (data dictionary: specialInstructions "displayed in the gold
+   banner on the driver's screen") -- matches .status-pending's urgency tone */
+.docket-instructions-banner {
+    margin: 10px 0;
+    padding: 10px 12px;
+    background: #FBF0DA;
+    color: #8A6A1F;
+    border-left: 4px solid var(--gold);
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.docket-product-list {
+    list-style: none;
+    margin: 10px 0 0;
+    padding: 0;
+}
+
+.docket-product-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.95rem;
+}
+
+.docket-product-list li:last-child {
+    border-bottom: none;
+}
+
+.docket-product-qty {
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+/* disabled placeholder -- Mark as Delivered POST logic is FR-E2, a later commit */
+.btn-mark-delivered {
+    width: 100%;
+    margin-top: 14px;
+    padding: 12px 0;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    background: var(--warm-brown);
+    color: #fff;
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.docket-logout {
+    margin-top: 24px;
+    text-align: center;
+}
+
+.docket-logout button {
+    background: var(--warm-brown);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    cursor: pointer;
 }

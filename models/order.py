@@ -187,6 +187,16 @@ class Order:
             })
         return pending
 
+    # FR-E1: single-order lookup, used to pull client/product details onto a driver's docket.
+    @classmethod
+    def get_by_id(cls, order_id):
+        connection = get_db_connection()
+        try:
+            row = connection.execute("SELECT * FROM orders WHERE order_id = ?", (order_id,)).fetchone()
+        finally:
+            connection.close()
+        return cls._build_from_row(row) if row else None
+
     # ---- approval / rejection (FR-B4) --------------------------------------
 
     @classmethod

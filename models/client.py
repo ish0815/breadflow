@@ -109,7 +109,7 @@ class Client(User):
 
         return cls._from_joined_row(row)
 
-    # Builds a Client by joining users+clients on clients.client_id (Module 7: list/deactivate).
+    # Builds a Client by joining users+clients on clients.client_id (Module A: list/deactivate).
     @classmethod
     def load_by_client_id(cls, client_id):
         connection = get_db_connection()
@@ -135,7 +135,7 @@ class Client(User):
 
         return cls._from_joined_row(row)
 
-    # Module 7: owner's client list -- every client, A-Z by business name.
+    # Module A: owner's client list -- every client, A-Z by business name.
     @classmethod
     def list_all(cls):
         connection = get_db_connection()

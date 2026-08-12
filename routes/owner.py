@@ -1,4 +1,4 @@
-# routes/owner.py -- Module 7/11: owner client management (FR-A2, FR-B2).
+# routes/owner.py -- Module A: owner client management (FR-A2, FR-B2).
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 
@@ -40,14 +40,14 @@ def _parse_product_selections(form, products):
     return selections
 
 
-# Module 7: owner sees every client, business name / zone / active status.
+# Module A: owner sees every client, business name / zone / active status.
 @owner_bp.route("/owner/clients")
 @login_required("owner")
 def client_list():
     return render_template("owner_clients.html", clients=Client.list_all())
 
 
-# Module 11: add a new client + their initial product catalogue in one step.
+# Module A: add a new client + their initial product catalogue in one step.
 @owner_bp.route("/owner/clients/new", methods=["GET", "POST"])
 @login_required("owner")
 def add_client():
@@ -83,7 +83,7 @@ def add_client():
     return redirect(url_for("owner.client_list"))
 
 
-# Module 7: blocks login without deleting the account (User.authenticate() already
+# Module A: blocks login without deleting the account (User.authenticate() already
 # checks is_active -- this just flips it).
 @owner_bp.route("/owner/clients/<int:client_id>/deactivate", methods=["POST"])
 @login_required("owner")

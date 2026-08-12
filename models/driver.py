@@ -1,4 +1,4 @@
-# models/driver.py -- Driver subclass of User; no separate driver table (Module 5).
+# models/driver.py -- Driver subclass of User; no separate driver table (Module E).
 
 from models.user import User
 

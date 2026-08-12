@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS clients (
     client_id       INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id         INTEGER NOT NULL UNIQUE REFERENCES users(user_id) ON DELETE CASCADE,
-    business_name   TEXT NOT NULL UNIQUE,    -- Module 7: trading name, default A-Z sort key
+    business_name   TEXT NOT NULL UNIQUE,    -- Module A: trading name, default A-Z sort key
     -- GLOB enforces exactly 11 digits, no separators
     abn             TEXT NOT NULL UNIQUE
                     CHECK (abn GLOB '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'),
@@ -24,10 +24,10 @@ CREATE TABLE IF NOT EXISTS clients (
     delivery_day1   TEXT NOT NULL,           -- FR-B1: first of 2 fixed weekly delivery days
     delivery_day2   TEXT NOT NULL CHECK (delivery_day2 != delivery_day1),
     delivery_charge REAL NOT NULL CHECK (delivery_charge > 0),
-    internal_notes  TEXT                     -- Module 11: owner-only, must never reach the client portal
+    internal_notes  TEXT                     -- Module A: owner-only, must never reach the client portal
 );
 
--- Module 12: master product record. Per-client price/pack size live on client_products.
+-- Module B: master product record. Per-client price/pack size live on client_products.
 CREATE TABLE IF NOT EXISTS products (
     product_id     INTEGER PRIMARY KEY AUTOINCREMENT,
     product_name   TEXT NOT NULL UNIQUE,
@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS production_lines (
     produce_qty         INTEGER NOT NULL CHECK (produce_qty >= 0)
 );
 
--- FR-D1 Module 8: one invoice per client per generated billing period, batch-generated
+-- FR-D1 Module D: one invoice per client per generated billing period, batch-generated
 -- across every client with approved orders in range ("Generate All Invoices").
 CREATE TABLE IF NOT EXISTS invoices (
     invoice_id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS invoice_lines (
     gst_applicable  INTEGER NOT NULL CHECK (gst_applicable IN (0, 1))
 );
 
--- FR-E1/FR-E2 Module 5: one delivery per approved order, assigned to a driver by the
+-- FR-E1/FR-E2 Module E: one delivery per approved order, assigned to a driver by the
 -- owner. UNIQUE(order_id) -- an order is delivered at most once.
 CREATE TABLE IF NOT EXISTS deliveries (
     delivery_id           INTEGER PRIMARY KEY AUTOINCREMENT,

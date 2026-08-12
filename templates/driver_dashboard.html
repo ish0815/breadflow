@@ -3,11 +3,56 @@
 {% block title %}Driver Dashboard - BreadFlow{% endblock %}
 
 {% block body %}
-<div class="stub-page">
-    <h1>Driver dashboard</h1>
-    <p>Today's deliveries will appear here.</p>
-    <form method="post" action="{{ url_for('auth.logout') }}">
-        <button type="submit">Log out</button>
-    </form>
+<div class="order-page">
+    <header class="order-header">
+        <h1>Today's deliveries</h1>
+        <p class="order-subtext">{{ docket|length }} {{ "delivery" if docket|length == 1 else "deliveries" }} for {{ docket_date }}</p>
+    </header>
+
+    <main class="order-form-wrap">
+        <form method="get" class="field">
+            <label for="date">Docket date</label>
+            <input type="date" id="date" name="date" value="{{ docket_date }}" onchange="this.form.submit()">
+        </form>
+
+        {% if not docket %}
+        <p>No deliveries scheduled</p>
+        {% else %}
+        <div class="docket-list">
+            {% for delivery in docket %}
+            <div class="docket-card">
+                <div class="docket-card-header">
+                    <span class="docket-client">{{ delivery.business_name }}</span>
+                    {% if delivery.delivery_status == "delivered" %}
+                    <span class="status-pill status-active">Delivered</span>
+                    {% else %}
+                    <span class="status-pill status-pending">Pending</span>
+                    {% endif %}
+                </div>
+                <p class="docket-zone">Zone: {{ delivery.delivery_zone }}</p>
+
+                {% if delivery.special_instructions %}
+                <p class="docket-instructions-banner">{{ delivery.special_instructions }}</p>
+                {% endif %}
+
+                <ul class="docket-product-list">
+                    {% for line in delivery.order_lines %}
+                    <li>
+                        <span class="docket-product-name">{{ line.product_name }}</span>
+                        <span class="docket-product-qty">x{{ line.quantity }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+
+                <button type="button" class="btn-mark-delivered" disabled>Mark as Delivered</button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('auth.logout') }}" class="docket-logout">
+            <button type="submit">Log out</button>
+        </form>
+    </main>
 </div>
 {% endblock %}

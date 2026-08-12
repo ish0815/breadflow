@@ -63,7 +63,7 @@ def client_order_form():
     return redirect(url_for("orders.client_order_form"))
 
 
-# FR-B4: simple pending queue. Full filter/search view is Module 6, later.
+# FR-B4: simple pending queue. Full filter/search view is Module B, later.
 @orders_bp.route("/owner/orders/pending")
 @login_required("owner")
 def owner_pending_orders():
