@@ -64,7 +64,7 @@ class Delivery:
     # ---- creation (owner assigns a driver to an approved order) -----------------
 
     # FR-E1: order must exist and be approved; driver must be an active user with
-    # role='driver' -- both un-expressible as a DB CHECK, so validated here instead.
+    # role='driver' - both un-expressible as a DB CHECK, so validated here instead.
     # delivery_date/special_instructions are copied from the order, never caller-supplied,
     # so a delivery can't drift from the order it belongs to.
     @classmethod
@@ -105,7 +105,7 @@ class Delivery:
     # ---- reading back ------------------------------------------------------
 
     # FR-E1: today's (or any date's) docket for one driver. Ordered by delivery_id --
-    # true stop-sequence ordering is a later commit (route/zone logic, not modelled yet).
+
     @classmethod
     def get_by_driver_and_date(cls, driver_id, delivery_date):
         connection = get_db_connection()

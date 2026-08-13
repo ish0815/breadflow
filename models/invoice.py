@@ -64,7 +64,7 @@ class Invoice:
     def client_id(self):
         return self._client_id
 
-    # FR-D1: display format INV-XXXX, computed from the integer PK -- not a
+    # FR-D1: 
     # separate stored ID, consistent with every other table in this schema
     @property
     def display_id(self):
@@ -134,7 +134,7 @@ class Invoice:
 
     # Batch "Generate All Invoices": one Invoice per client with >=1 approved order
     # in [period_start, period_end]. Clients with none never appear in the query
-    # below, so they're skipped with no special-case code -- not an error.
+    # below, so they're skipped.
     @classmethod
     def generate_all(cls, period_start, period_end, owner_id):
         connection = get_db_connection()
@@ -160,8 +160,7 @@ class Invoice:
 
     # One client's invoice: aggregate lines, bucket GST, insert header+lines, write PDF.
     # Reuses the caller's connection (avoids opening one per client in the batch), but
-    # commits per client -- one client's PDF failure shouldn't roll back invoices for
-    # clients already generated earlier in the same batch.
+    # commits per client
     @classmethod
     def _generate_for_client(cls, connection, client_id, period_start, period_end, owner_id):
         client_row = connection.execute(
@@ -252,7 +251,7 @@ class Invoice:
         )
 
         # passed through directly rather than back-computed from delivery_charge_total /
-        # approved_order_count -- the exact per-order figure is already in scope here
+        # approved_order_count
         pdf_path = invoice.export_to_pdf(delivery_charge)
         connection.execute("UPDATE invoices SET pdf_path = ? WHERE invoice_id = ?",
                             (str(pdf_path), invoice_id))

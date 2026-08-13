@@ -16,7 +16,7 @@ class OrderValidationError(Exception):
     pass
 
 
-# approve()/reject() called on an order that's no longer pending.
+# approve()/reject()/mark_delivered() called on an order in the wrong state.
 class OrderStateError(Exception):
     pass
 
@@ -206,6 +206,27 @@ class Order:
     @classmethod
     def reject(cls, order_id, owner_id):
         cls._set_status(order_id, "rejected", owner_id)
+
+    # ---- delivery completion (FR-E2) ---------------------------------------
+
+    # Driver-triggered sync, called after Delivery.mark_delivered() in the route.
+    # Distinct from _set_status: no owner_id/approved_at (not an owner action), and
+    # the guard is 'approved' not 'pending' -- only an approved order can have an
+    # active delivery in the first place (see Delivery.create).
+    @classmethod
+    def mark_delivered(cls, order_id):
+        connection = get_db_connection()
+        try:
+            cursor = connection.execute(
+                "UPDATE orders SET order_status = 'delivered' WHERE order_id = ? AND order_status = 'approved'",
+                (order_id,),
+            )
+            connection.commit()
+        finally:
+            connection.close()
+
+        if cursor.rowcount == 0:
+            raise OrderStateError("This order is not in a state that can be marked delivered")
 
     @staticmethod
     def _set_status(order_id, status, owner_id):

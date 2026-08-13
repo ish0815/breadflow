@@ -44,7 +44,13 @@
                     {% endfor %}
                 </ul>
 
-                <button type="button" class="btn-mark-delivered" disabled>Mark as Delivered</button>
+                {% if delivery.delivery_status != "delivered" %}
+                <form method="post" action="{{ url_for('driver.mark_delivered', delivery_id=delivery.delivery_id) }}"
+                      enctype="multipart/form-data" class="docket-deliver-form">
+                    <input type="file" name="photo" accept="image/jpeg,image/png" required>
+                    <button type="submit" class="btn-mark-delivered">Mark as Delivered</button>
+                </form>
+                {% endif %}
             </div>
             {% endfor %}
         </div>

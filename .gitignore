@@ -218,3 +218,6 @@ __marimo__/
 
 CLAUDE.md
 /docs
+
+# FR-E2 proof-of-delivery photos -- generated at runtime, unlike breadflow.db
+instance/uploads/

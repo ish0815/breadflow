@@ -3,7 +3,8 @@
 import os
 from datetime import timedelta
 
-from flask import Flask, redirect, render_template, url_for
+from flask import Flask, flash, redirect, render_template, url_for
+from werkzeug.exceptions import RequestEntityTooLarge
 
 from database.db import init_db
 from routes.auth import auth_bp, login_required
@@ -27,6 +28,10 @@ app.config["SECRET_KEY"] = os.environ.get("BREADFLOW_SECRET_KEY", "dev-only-inse
 # FR-A1: 8hr inactivity timeout (Flask refreshes expiry each request)
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=8)
 
+# FR-E2 safety net: coarse cap above the 10MB photo rule the route enforces
+# itself -- stops an oversized request body being buffered into memory at all.
+app.config["MAX_CONTENT_LENGTH"] = 12 * 1024 * 1024
+
 
 # No anonymous dashboard -- always redirect to login.
 @app.route("/")
@@ -38,6 +43,13 @@ def index():
 @app.errorhandler(403)
 def forbidden(_exc):
     return render_template("403.html"), 403
+
+
+# FR-E2: request body over MAX_CONTENT_LENGTH -- clean flash instead of a raw 413 page.
+@app.errorhandler(RequestEntityTooLarge)
+def request_entity_too_large(_exc):
+    flash("Upload was too large.", "error")
+    return redirect(url_for("driver.dashboard"))
 
 
 # ---- role dashboards ---------------------------------------------------

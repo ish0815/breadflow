@@ -993,7 +993,7 @@ body {
     color: var(--text-muted);
 }
 
-/* disabled placeholder -- Mark as Delivered POST logic is FR-E2, a later commit */
+/* live -- posts to driver.mark_delivered via .docket-deliver-form (FR-E2) */
 .btn-mark-delivered {
     width: 100%;
     margin-top: 14px;
@@ -1004,8 +1004,14 @@ body {
     font-weight: 600;
     background: var(--warm-brown);
     color: #fff;
-    opacity: 0.5;
-    cursor: not-allowed;
+    cursor: pointer;
+}
+
+.docket-deliver-form input[type="file"] {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    font-size: 0.85rem;
 }
 
 .docket-logout {
