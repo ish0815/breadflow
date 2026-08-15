@@ -4,6 +4,7 @@
 # mark-as-delivered (photo validation, ownership check).
 # Permanent test script -- keep in the repo, do not delete.
 
+import contextlib
 import io
 from datetime import date
 
@@ -132,16 +133,18 @@ try:
     assert b"No deliveries scheduled" in response.data
     print("PASS: /driver/dashboard shows 'No deliveries scheduled' for a date with no assignments")
 
-    # 6. FR-E2: valid photo upload updates both the delivery and its linked order
+    # 6. FR-E2: valid photo upload updates both the delivery/order, and notifies owner + client
     order_id, delivery = _make_approved_order_and_delivery(DRIVER_ID)
     created_order_ids.append(order_id)
     seed_session(DRIVER_ID, "driver")
-    response = client.post(
-        f"/driver/delivery/{delivery.delivery_id}/deliver",
-        data={"photo": (io.BytesIO(FAKE_JPEG_BYTES), "proof.jpg")},
-        content_type="multipart/form-data",
-        follow_redirects=True,
-    )
+    captured_output = io.StringIO()
+    with contextlib.redirect_stdout(captured_output):
+        response = client.post(
+            f"/driver/delivery/{delivery.delivery_id}/deliver",
+            data={"photo": (io.BytesIO(FAKE_JPEG_BYTES), "proof.jpg")},
+            content_type="multipart/form-data",
+            follow_redirects=True,
+        )
     assert response.status_code == 200, response.status_code
     assert b"Delivery marked as complete." in response.data
     assert Delivery.get_by_id(delivery.delivery_id).delivery_status == "delivered"
@@ -154,6 +157,11 @@ try:
         connection.close()
     assert order_status == "delivered", order_status
     print("PASS: valid photo upload marks delivery and order as delivered")
+
+    stub_output = captured_output.getvalue()
+    assert f"order {order_id}" in stub_output and "owner notified" in stub_output, stub_output
+    assert f"order {order_id}" in stub_output and "client notified: delivered on" in stub_output, stub_output
+    print("PASS: mark-as-delivered prints owner and client delivery notification stubs")
 
     # 7. FR-E2: wrong file type is rejected, delivery stays pending
     order_id2, delivery2 = _make_approved_order_and_delivery(DRIVER_ID)

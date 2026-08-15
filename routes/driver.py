@@ -24,6 +24,16 @@ MAX_PHOTO_BYTES = 10 * 1024 * 1024
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / "instance" / "uploads"
 
 
+# Stub for FR-E2's owner delivery notification -- real push/email comes later.
+def _notify_owner_delivery(order_id, business_name):
+    print(f"[stub notification] order {order_id} for {business_name} delivered -- owner notified")
+
+
+# Stub for FR-E2's client delivery notification -- real SMTP comes later.
+def _notify_client_delivery(order_id, delivered_at):
+    print(f"[stub email] order {order_id} -> client notified: delivered on {delivered_at}")
+
+
 # FR-E1: driver's daily docket for a chosen date (today by default).
 @driver_bp.route("/driver/dashboard")
 @login_required("driver")
@@ -94,6 +104,18 @@ def mark_delivered(delivery_id):
         # delivery is already recorded -- don't undo it, no cross-table transaction
         # (each model method owns its own connection)
         flash(f"Delivery recorded, but order status could not be updated: {exc}", "error")
+        return redirect(url_for("driver.dashboard"))
+
+    try:
+        order = Order.get_by_id(delivery.order_id)
+        client_record = Client.load_by_client_id(order.client_id)
+        _notify_owner_delivery(order.order_id, client_record.business_name)
+        _notify_client_delivery(order.order_id, delivery.delivered_at)
+    except Exception as exc:
+        # delivery + order are already committed above -- a notification failure
+        # must not undo or block the successful delivery (same partial-failure
+        # philosophy as the Order.mark_delivered() sync above)
+        flash(f"Delivery marked as complete, but notifications could not be sent: {exc}", "error")
         return redirect(url_for("driver.dashboard"))
 
     flash("Delivery marked as complete.", "success")
