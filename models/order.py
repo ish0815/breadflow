@@ -206,6 +206,53 @@ class Order:
             })
         return pending
 
+    # Sidebar badge (Module F): cheap count, no row data needed.
+    @classmethod
+    def count_pending(cls):
+        connection = get_db_connection()
+        try:
+            return connection.execute(
+                "SELECT COUNT(*) AS count FROM orders WHERE order_status = 'pending'"
+            ).fetchone()["count"]
+        finally:
+            connection.close()
+
+    # Owner dashboard stat card: actioned today and not rejected -- approved_at is
+    # set on both approve() and reject() (see _set_status), so the status filter is
+    # what actually excludes rejections here. approved_at is stored via SQLite's UTC
+    # 'now' (same as everywhere else in this schema); 'localtime' converts both sides
+    # to the owner's actual calendar day, so a morning approval in Melbourne doesn't
+    # get counted as "yesterday" for most of the business day.
+    @classmethod
+    def count_approved_today(cls):
+        connection = get_db_connection()
+        try:
+            return connection.execute(
+                """
+                SELECT COUNT(*) AS count FROM orders
+                WHERE order_status IN ('approved', 'delivered')
+                  AND STRFTIME('%Y-%m-%d', approved_at, 'localtime') = STRFTIME('%Y-%m-%d', 'now', 'localtime')
+                """
+            ).fetchone()["count"]
+        finally:
+            connection.close()
+
+    # Owner dashboard stat card: confirmed orders due out today. Reads delivery_date
+    # on orders, not the deliveries table -- nothing in the app currently creates a
+    # deliveries row outside test scripts, so that table isn't a reliable dashboard signal.
+    @classmethod
+    def count_deliveries_today(cls):
+        connection = get_db_connection()
+        try:
+            return connection.execute(
+                """
+                SELECT COUNT(*) AS count FROM orders
+                WHERE order_status IN ('approved', 'delivered') AND delivery_date = DATE('now', 'localtime')
+                """
+            ).fetchone()["count"]
+        finally:
+            connection.close()
+
     # Module 6: fixed whitelist of sort columns -- never build ORDER BY from raw input.
     _SORT_COLUMNS = {
         "newest": "orders.order_id DESC",

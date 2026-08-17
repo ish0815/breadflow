@@ -1,0 +1,55 @@
+{% extends "owner_base.html" %}
+
+{% block title %}Dashboard - BreadFlow{% endblock %}
+
+{% block owner_content %}
+<div class="order-page">
+    <header class="order-header">
+        <h1>Dashboard</h1>
+        <p class="order-subtext">Bread Staple Bakery owner overview</p>
+    </header>
+
+    <main class="client-table-wrap">
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="summary-card-label">Pending orders</div>
+                <div class="summary-card-value">{{ pending_count }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-card-label">Approved today</div>
+                <div class="summary-card-value">{{ approved_today_count }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-card-label">Deliveries today</div>
+                <div class="summary-card-value">{{ deliveries_today_count }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-card-label">This week's revenue</div>
+                <div class="summary-card-value">${{ "%.2f"|format(week_revenue) }}</div>
+            </div>
+        </div>
+
+        <h2 class="form-section-title">Clients overdue for their next order</h2>
+
+        {% if not overdue_clients %}
+        <p>No clients are currently overdue.</p>
+        {% else %}
+        <div class="reminder-list">
+            {% for entry in overdue_clients %}
+            <div class="reminder-card {% if entry.days_since_order is none %}reminder-never-ordered{% endif %}">
+                <p class="reminder-client">{{ entry.business_name }}</p>
+                {% if entry.days_since_order is none %}
+                <p class="reminder-detail">Never placed an order</p>
+                {% else %}
+                <p class="reminder-detail">
+                    {{ entry.days_since_order }} day(s) since last order (usual gap ~{{ entry.avg_interval }} days)
+                </p>
+                {% endif %}
+                <p class="reminder-detail">Usual delivery days: {{ entry.delivery_days[0] }} / {{ entry.delivery_days[1] }}</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}

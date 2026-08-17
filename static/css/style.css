@@ -1148,3 +1148,214 @@ body {
     padding: 8px 16px;
     cursor: pointer;
 }
+
+/* ---- owner sidebar layout (Module F) ------------------------------------ */
+
+.owner-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.owner-sidebar {
+    flex: 0 0 230px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: linear-gradient(160deg, var(--navy) 0%, var(--navy-dark) 100%);
+    color: #fff;
+    padding: 24px 0;
+}
+
+.owner-sidebar-brand {
+    padding: 0 20px 24px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.owner-sidebar-brand-primary {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.owner-sidebar-brand-secondary {
+    margin: 2px 0 0;
+    font-size: 0.9rem;
+    color: var(--teal);
+}
+
+.owner-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.owner-nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    color: var(--feature-text);
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-left: 4px solid transparent;
+}
+
+.owner-nav-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+}
+
+.owner-nav-item.active {
+    background: rgba(255, 255, 255, 0.08);
+    border-left-color: var(--teal);
+    color: #fff;
+}
+
+.owner-nav-badge {
+    background: var(--gold);
+    color: var(--navy-dark);
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.owner-sidebar-footer {
+    padding: 16px 20px 0;
+    border-top: 2px solid var(--warm-brown);
+}
+
+.owner-sidebar-footer form {
+    margin: 0;
+}
+
+.owner-sidebar-footer button {
+    width: 100%;
+    padding: 10px 0;
+    background: var(--warm-brown);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.owner-content {
+    flex: 1;
+    min-width: 0;
+}
+
+/* ---- analytics (FR-F1) ---------------------------------------------------- */
+
+.analytics-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.analytics-toolbar select {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: inherit;
+}
+
+.period-toggle {
+    display: flex;
+    gap: 8px;
+}
+
+/* same shape as .status-tab, kept separate since this toggles a query param, not a filter */
+.period-toggle-btn {
+    padding: 6px 14px;
+    border-radius: 14px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+.period-toggle-btn.active {
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy);
+}
+
+.btn-csv-export {
+    background: var(--warm-brown);
+    color: #fff;
+    border-radius: 6px;
+}
+
+.btn-csv-export:hover {
+    background: #6E4A2E;
+}
+
+.chart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.yoy-table td:not(:first-child),
+.yoy-table th:not(:first-child) {
+    text-align: right;
+}
+
+.change-up {
+    color: var(--teal-dark);
+    font-weight: 600;
+}
+
+.change-down {
+    color: var(--error-red);
+    font-weight: 600;
+}
+
+/* ---- dashboard reminder (Module F, FR-F3) --------------------------------- */
+
+.reminder-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* gold = urgency, matches .docket-instructions-banner's convention */
+.reminder-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--gold);
+    border-radius: 8px;
+    padding: 14px 16px;
+}
+
+.reminder-never-ordered {
+    border-left-color: var(--error-red);
+}
+
+.reminder-client {
+    margin: 0 0 4px;
+    font-weight: 700;
+    color: var(--navy);
+}
+
+.reminder-detail {
+    margin: 2px 0;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}

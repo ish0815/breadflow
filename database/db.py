@@ -3,7 +3,8 @@
 import sqlite3
 from pathlib import Path
 
-# gitignored -- real client data never hits version control (NF-06)
+# intentionally committed (not gitignored) -- keeps dev/demo data consistent across
+# machines; a deliberate project convention, not an NF-06 compliance gap
 DATABASE_PATH = Path(__file__).resolve().parent.parent / "instance" / "breadflow.db"
 
 SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"

@@ -1,0 +1,98 @@
+{% extends "owner_base.html" %}
+
+{% block title %}Analytics - BreadFlow{% endblock %}
+
+{% block owner_content %}
+<div class="order-page">
+    <header class="order-header">
+        <h1>Analytics</h1>
+        <p class="order-subtext">Sales reports and trends</p>
+    </header>
+
+    <main class="client-table-wrap">
+        <div class="analytics-toolbar">
+            <div class="period-toggle">
+                {% for option in ["weekly", "monthly", "yearly"] %}
+                <a class="period-toggle-btn {% if period == option %}active{% endif %}"
+                   href="{{ url_for('analytics.dashboard', period=option, fy=selected_fy) }}">{{ option|capitalize }}</a>
+                {% endfor %}
+            </div>
+
+            <form method="get" action="{{ url_for('analytics.dashboard') }}" class="field">
+                <input type="hidden" name="period" value="{{ period }}">
+                <select name="fy" onchange="this.form.submit()">
+                    {% for fy_year in available_fys %}
+                    <option value="{{ fy_year }}" {% if fy_year == selected_fy %}selected{% endif %}>{{ fy_label(fy_year) }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+
+            <a class="btn-csv-export btn-inline" href="{{ url_for('analytics.export_csv', period=period, fy=selected_fy) }}">Export CSV</a>
+        </div>
+
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="summary-card-label">Total revenue</div>
+                <div class="summary-card-value">${{ "%.2f"|format(summary.total_revenue) }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-card-label">Orders this period</div>
+                <div class="summary-card-value">{{ summary.order_count }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-card-label">Active clients</div>
+                <div class="summary-card-value">{{ summary.active_clients }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-card-label">Avg order value</div>
+                <div class="summary-card-value">${{ "%.2f"|format(summary.avg_order_value) }}</div>
+            </div>
+        </div>
+
+        <div class="chart-grid">
+            <div class="chart-card">
+                <p class="production-line-name">Monthly revenue ({{ fy_label(selected_fy) }})</p>
+                <canvas id="monthly-revenue-chart"></canvas>
+            </div>
+            <div class="chart-card">
+                <p class="production-line-name">Top 5 clients by revenue</p>
+                <canvas id="top-clients-chart"></canvas>
+            </div>
+            <div class="chart-card">
+                <p class="production-line-name">Sales by product (units)</p>
+                <canvas id="product-units-chart"></canvas>
+            </div>
+        </div>
+
+        <h2 class="form-section-title">Year-on-year comparison</h2>
+        <table class="client-table yoy-table">
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th>{{ fy_label(selected_fy) }}</th>
+                    <th>{{ fy_label(selected_fy - 1) }}</th>
+                    <th>% Change</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in yoy %}
+                <tr>
+                    <td>{{ row.label }}</td>
+                    <td>{% if row.is_currency %}${{ "%.2f"|format(row.current) }}{% else %}{{ row.current }}{% endif %}</td>
+                    <td>{% if row.is_currency %}${{ "%.2f"|format(row.previous) }}{% else %}{{ row.previous }}{% endif %}</td>
+                    <td class="{% if row.pct_change is none %}{% elif row.pct_change >= 0 %}change-up{% else %}change-down{% endif %}">
+                        {% if row.pct_change is none %}N/A{% else %}{{ "%.1f"|format(row.pct_change) }}%{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    window.BREADFLOW_ANALYTICS = {{ chart_payload | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/analytics.js') }}"></script>
+{% endblock %}

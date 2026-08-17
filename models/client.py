@@ -1,5 +1,6 @@
 # models/client.py -- Client subclass of User; business fields live in the clients table.
 
+import datetime
 import re
 import sqlite3
 
@@ -316,6 +317,58 @@ class Client(User):
             connection.commit()
         finally:
             connection.close()
+
+    # ---- dashboard reminder (FR-F3, rule-based, no AI) ---------------------
+
+    # Flags active clients overdue for their next order: daysSinceOrder > avgInterval * 1.5,
+    # where avgInterval is the average gap across their last 10 approved/delivered orders
+    # (fallback 7 days when there's fewer than 2, since that's roughly one of their 2
+    # fixed weekly delivery days). Never-ordered clients are always flagged. Sorted by
+    # how overdue they are relative to their own pattern, most overdue first.
+    @classmethod
+    def get_overdue_clients(cls):
+        connection = get_db_connection()
+        try:
+            flagged = []
+            for client in cls.list_all():
+                if not client.is_active:
+                    continue
+
+                rows = connection.execute(
+                    """
+                    SELECT delivery_date FROM orders
+                    WHERE client_id = ? AND order_status IN ('approved', 'delivered')
+                    ORDER BY delivery_date DESC LIMIT 10
+                    """,
+                    (client.client_id,),
+                ).fetchall()
+
+                dates = [datetime.date.fromisoformat(row["delivery_date"]) for row in rows]
+                days_since_order = (datetime.date.today() - dates[0]).days if dates else None
+
+                if len(dates) >= 2:
+                    gaps = [(dates[i] - dates[i + 1]).days for i in range(len(dates) - 1)]
+                    avg_interval = sum(gaps) / len(gaps)
+                else:
+                    avg_interval = 7
+
+                if days_since_order is None or days_since_order > avg_interval * 1.5:
+                    flagged.append({
+                        "client_id": client.client_id,
+                        "business_name": client.business_name,
+                        "delivery_days": client.delivery_days,
+                        "days_since_order": days_since_order,
+                        "avg_interval": round(avg_interval),
+                    })
+        finally:
+            connection.close()
+
+        flagged.sort(
+            key=lambda entry: (float("inf") if entry["days_since_order"] is None
+                                else entry["days_since_order"] / entry["avg_interval"]),
+            reverse=True,
+        )
+        return flagged
 
     # ---- session -----------------------------------------------------
 

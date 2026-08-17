@@ -1,14 +1,18 @@
-# app.py -- Flask entry point: registers blueprints, session config, dashboard stubs.
+# app.py -- Flask entry point: registers blueprints, session config, role dashboards.
 
 import os
 from datetime import timedelta
 
 from dotenv import load_dotenv
-from flask import Flask, flash, redirect, render_template, url_for
+from flask import Flask, flash, redirect, render_template, session, url_for
 from werkzeug.exceptions import RequestEntityTooLarge
 
 from database.db import init_db
 from email_utils import mail
+from models.analytics import Analytics, fy_start_year, resolve_period_bounds
+from models.client import Client
+from models.order import Order
+from routes.analytics import analytics_bp
 from routes.auth import auth_bp, login_required
 from routes.driver import driver_bp
 from routes.invoices import invoices_bp
@@ -26,6 +30,7 @@ app.register_blueprint(owner_bp)
 app.register_blueprint(production_bp)
 app.register_blueprint(invoices_bp)
 app.register_blueprint(driver_bp)
+app.register_blueprint(analytics_bp)
 
 # signs the session cookie so it can't be forged; env var in prod, dev fallback locally
 app.config["SECRET_KEY"] = os.environ.get("BREADFLOW_SECRET_KEY", "dev-only-insecure-key")
@@ -53,6 +58,15 @@ def index():
     return redirect(url_for("auth.login"))
 
 
+# Sidebar pending-orders badge (Module F) -- only computed for the owner portal,
+# so client/driver pages don't pay for an extra query on every request.
+@app.context_processor
+def inject_owner_nav_data():
+    if session.get("role") == "owner":
+        return {"owner_pending_count": Order.count_pending()}
+    return {}
+
+
 # FR-A3: wrong-role access lands here, not back at login.
 @app.errorhandler(403)
 def forbidden(_exc):
@@ -67,18 +81,21 @@ def request_entity_too_large(_exc):
 
 
 # ---- role dashboards ---------------------------------------------------
-# stubs only -- Modules 2/3/4 replace these with the real portals
+# owner dashboard is real (Module F: FR-F3 reminder list); client's is still a
+# stub -- Module 3 replaces it with the real client portal
 
 @app.route("/owner/dashboard")
 @login_required("owner")
 def owner_dashboard():
-    return render_template("dashboard_stub.html", portal_name="Owner", extra_links=[
-        (url_for("orders.owner_pending_orders"), "View pending orders"),
-        (url_for("orders.owner_orders"), "Manage all orders"),
-        (url_for("production.production_list_view"), "View production list"),
-        (url_for("owner.client_list"), "Manage clients"),
-        (url_for("invoices.owner_invoices"), "Manage invoices"),
-    ])
+    week_start, week_end = resolve_period_bounds("weekly", fy_start_year())
+    return render_template(
+        "owner_dashboard.html",
+        overdue_clients=Client.get_overdue_clients(),
+        pending_count=Order.count_pending(),
+        approved_today_count=Order.count_approved_today(),
+        deliveries_today_count=Order.count_deliveries_today(),
+        week_revenue=Analytics.get_period_summary(week_start, week_end)["total_revenue"],
+    )
 
 
 @app.route("/client/dashboard")
