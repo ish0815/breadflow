@@ -139,12 +139,12 @@ class Invoice:
     def generate_all(cls, period_start, period_end, owner_id):
         connection = get_db_connection()
         try:
-            # TODO Module E: extend to order_status IN ('approved', 'delivered')
-            # once deliveries introduce that status transition
+            # FR-D1 requires approved AND delivered orders; 'delivered' implies
+            # 'approved' was already passed (FR-B4 gates that transition)
             client_rows = connection.execute(
                 """
                 SELECT DISTINCT client_id FROM orders
-                WHERE order_status = 'approved' AND delivery_date BETWEEN ? AND ?
+                WHERE order_status = 'delivered' AND delivery_date BETWEEN ? AND ?
                 ORDER BY client_id
                 """,
                 (period_start, period_end),
@@ -168,10 +168,14 @@ class Invoice:
             (client_id,),
         ).fetchone()
 
+        # FR-D1 requires approved AND delivered orders; 'delivered' implies 'approved'
+        # was already passed (FR-B4 gates that transition), so this counts both.
+        # Kept as approved_order_count to match the invoices table column, but it
+        # now counts delivered orders, satisfying the approved+delivered requirement.
         approved_order_count = connection.execute(
             """
             SELECT COUNT(*) AS count FROM orders
-            WHERE client_id = ? AND order_status = 'approved'
+            WHERE client_id = ? AND order_status = 'delivered'
               AND delivery_date BETWEEN ? AND ?
             """,
             (client_id, period_start, period_end),
@@ -179,6 +183,8 @@ class Invoice:
 
         # grouped by (product, unit_price), not just product -- a mid-period agreed_price
         # change must produce two distinct lines, not one silently-blended wrong total
+        # FR-D1 requires approved AND delivered orders; 'delivered' implies 'approved'
+        # was already passed (FR-B4 gates that transition).
         line_rows = connection.execute(
             """
             SELECT order_lines.product_id, order_lines.unit_price, products.product_name,
@@ -186,7 +192,7 @@ class Invoice:
             FROM order_lines
             JOIN orders ON orders.order_id = order_lines.order_id
             JOIN products ON products.product_id = order_lines.product_id
-            WHERE orders.client_id = ? AND orders.order_status = 'approved'
+            WHERE orders.client_id = ? AND orders.order_status = 'delivered'
               AND orders.delivery_date BETWEEN ? AND ?
             GROUP BY order_lines.product_id, order_lines.unit_price
             ORDER BY products.product_name
