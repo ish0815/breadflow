@@ -1,3 +1,5 @@
 Flask
 bcrypt
 reportlab
+Flask-Mail
+python-dotenv

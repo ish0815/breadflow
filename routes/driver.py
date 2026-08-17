@@ -8,9 +8,11 @@ from uuid import uuid4
 from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 from werkzeug.utils import secure_filename
 
+from email_utils import send_email
 from models.client import Client
 from models.delivery import Delivery, DeliveryStateError, DeliveryValidationError
 from models.order import Order, OrderStateError
+from models.owner import Owner
 from routes.auth import login_required
 
 driver_bp = Blueprint("driver", __name__)
@@ -24,14 +26,22 @@ MAX_PHOTO_BYTES = 10 * 1024 * 1024
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / "instance" / "uploads"
 
 
-# Stub for FR-E2's owner delivery notification -- real push/email comes later.
+# FR-E2: emails all active owner accounts once a delivery is marked complete.
 def _notify_owner_delivery(order_id, business_name):
-    print(f"[stub notification] order {order_id} for {business_name} delivered -- owner notified")
+    send_email(
+        subject=f"BreadFlow delivery #{order_id} completed",
+        recipients=Owner.list_active_emails(),
+        body=f"Order #{order_id} for {business_name} has been delivered.",
+    )
 
 
-# Stub for FR-E2's client delivery notification -- real SMTP comes later.
-def _notify_client_delivery(order_id, delivered_at):
-    print(f"[stub email] order {order_id} -> client notified: delivered on {delivered_at}")
+# FR-E2: emails the client once their delivery is marked complete.
+def _notify_client_delivery(order_id, delivered_at, client_email):
+    send_email(
+        subject=f"BreadFlow order #{order_id} delivered",
+        recipients=[client_email],
+        body=f"Your order #{order_id} was delivered on {delivered_at}.",
+    )
 
 
 # FR-E1: driver's daily docket for a chosen date (today by default).
@@ -110,7 +120,7 @@ def mark_delivered(delivery_id):
         order = Order.get_by_id(delivery.order_id)
         client_record = Client.load_by_client_id(order.client_id)
         _notify_owner_delivery(order.order_id, client_record.business_name)
-        _notify_client_delivery(order.order_id, delivery.delivered_at)
+        _notify_client_delivery(order.order_id, delivery.delivered_at, client_record.email)
     except Exception as exc:
         # delivery + order are already committed above -- a notification failure
         # must not undo or block the successful delivery (same partial-failure

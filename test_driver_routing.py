@@ -4,12 +4,12 @@
 # mark-as-delivered (photo validation, ownership check).
 # Permanent test script -- keep in the repo, do not delete.
 
-import contextlib
 import io
 from datetime import date
 
 from app import app
 from database.db import get_db_connection
+from email_utils import mail
 from models.delivery import Delivery
 
 app.config["TESTING"] = True
@@ -137,8 +137,7 @@ try:
     order_id, delivery = _make_approved_order_and_delivery(DRIVER_ID)
     created_order_ids.append(order_id)
     seed_session(DRIVER_ID, "driver")
-    captured_output = io.StringIO()
-    with contextlib.redirect_stdout(captured_output):
+    with mail.record_messages() as outbox:
         response = client.post(
             f"/driver/delivery/{delivery.delivery_id}/deliver",
             data={"photo": (io.BytesIO(FAKE_JPEG_BYTES), "proof.jpg")},
@@ -158,10 +157,12 @@ try:
     assert order_status == "delivered", order_status
     print("PASS: valid photo upload marks delivery and order as delivered")
 
-    stub_output = captured_output.getvalue()
-    assert f"order {order_id}" in stub_output and "owner notified" in stub_output, stub_output
-    assert f"order {order_id}" in stub_output and "client notified: delivered on" in stub_output, stub_output
-    print("PASS: mark-as-delivered prints owner and client delivery notification stubs")
+    # TESTING=True (set above) makes Flask-Mail suppress real SMTP sends automatically --
+    # record_messages() still captures them via blinker signals, so no network call happens here.
+    assert len(outbox) == 2, outbox
+    assert any(f"#{order_id}" in m.subject and "completed" in m.subject for m in outbox), outbox
+    assert any(f"#{order_id}" in m.subject and "delivered" in m.subject for m in outbox), outbox
+    print("PASS: mark-as-delivered emails owner and client delivery notifications")
 
     # 7. FR-E2: wrong file type is rejected, delivery stays pending
     order_id2, delivery2 = _make_approved_order_and_delivery(DRIVER_ID)

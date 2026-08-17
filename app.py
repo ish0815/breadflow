@@ -3,16 +3,21 @@
 import os
 from datetime import timedelta
 
+from dotenv import load_dotenv
 from flask import Flask, flash, redirect, render_template, url_for
 from werkzeug.exceptions import RequestEntityTooLarge
 
 from database.db import init_db
+from email_utils import mail
 from routes.auth import auth_bp, login_required
 from routes.driver import driver_bp
 from routes.invoices import invoices_bp
 from routes.orders import orders_bp
 from routes.owner import owner_bp
 from routes.production import production_bp
+
+# loads .env (gitignored) so MAIL_USERNAME/PASSWORD/DEFAULT_SENDER below are set locally
+load_dotenv()
 
 app = Flask(__name__)
 app.register_blueprint(auth_bp)
@@ -31,6 +36,15 @@ app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=8)
 # FR-E2 safety net: coarse cap above the 10MB photo rule the route enforces
 # itself -- stops an oversized request body being buffered into memory at all.
 app.config["MAX_CONTENT_LENGTH"] = 12 * 1024 * 1024
+
+# FR-B1/FR-B4/FR-E2: Gmail SMTP for order/delivery notifications
+app.config["MAIL_SERVER"] = "smtp.gmail.com"
+app.config["MAIL_PORT"] = 587
+app.config["MAIL_USE_TLS"] = True
+app.config["MAIL_USERNAME"] = os.environ.get("MAIL_USERNAME")
+app.config["MAIL_PASSWORD"] = os.environ.get("MAIL_PASSWORD")
+app.config["MAIL_DEFAULT_SENDER"] = os.environ.get("MAIL_DEFAULT_SENDER")
+mail.init_app(app)
 
 
 # No anonymous dashboard -- always redirect to login.

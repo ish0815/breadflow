@@ -4,6 +4,7 @@ import datetime
 
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
+from email_utils import send_email
 from models.client import Client
 from models.order import Order, OrderStateError, OrderValidationError, WEEKDAYS
 from routes.auth import login_required
@@ -25,9 +26,26 @@ def _upcoming_delivery_dates(assigned_days):
     return dates
 
 
-# Stub for FR-B4's client notification email -- real SMTP comes later.
+# FR-B1: emails the client a confirmation once their order is placed.
+def _notify_client_order_confirmation(order):
+    client = Client.load_by_client_id(order.client_id)
+    send_email(
+        subject=f"BreadFlow order #{order.order_id} received",
+        recipients=[client.email],
+        body=f"We've received your order #{order.order_id} for {order.delivery_date}. "
+             f"It's awaiting approval.",
+    )
+
+
+# FR-B4: emails the client once an owner has approved/rejected their order.
 def _notify_client_order_status(order_id, status):
-    print(f"[stub email] order {order_id} -> client notified: {status}")
+    order = Order.get_by_id(order_id)
+    client = Client.load_by_client_id(order.client_id)
+    send_email(
+        subject=f"BreadFlow order #{order_id} {status}",
+        recipients=[client.email],
+        body=f"Your order #{order_id} for {order.delivery_date} has been {status}.",
+    )
 
 
 # FR-B1/B2/B3: GET renders the order form, POST places it via Order.place().
@@ -52,12 +70,19 @@ def client_order_form():
     special_instructions = request.form.get("special_instructions", "")
 
     try:
-        Order.place(client, delivery_date, raw_quantities, special_instructions)
+        order = Order.place(client, delivery_date, raw_quantities, special_instructions)
     except OrderValidationError as exc:
         return render_template(
             "order_form.html", client=client, products=approved_products,
             delivery_dates=delivery_dates, error=str(exc), submitted=request.form,
         ), 400
+
+    try:
+        _notify_client_order_confirmation(order)
+    except Exception as exc:
+        # order is already committed -- a failed confirmation email must not block placement
+        flash(f"Your order has been placed, but the confirmation email could not be sent: {exc}", "error")
+        return redirect(url_for("orders.client_order_form"))
 
     flash("Your order has been placed and is awaiting approval.", "success")
     return redirect(url_for("orders.client_order_form"))
@@ -78,7 +103,12 @@ def approve_order(order_id):
     except OrderStateError as exc:
         flash(str(exc), "error")
     else:
-        _notify_client_order_status(order_id, "approved")
+        try:
+            _notify_client_order_status(order_id, "approved")
+        except Exception as exc:
+            # order status is already committed -- a failed email must not block approval
+            flash(f"Order #{order_id} approved, but the client could not be emailed: {exc}", "error")
+            return redirect(url_for("orders.owner_pending_orders"))
         flash(f"Order #{order_id} approved.", "success")
 
     return redirect(url_for("orders.owner_pending_orders"))
@@ -92,7 +122,12 @@ def reject_order(order_id):
     except OrderStateError as exc:
         flash(str(exc), "error")
     else:
-        _notify_client_order_status(order_id, "rejected")
+        try:
+            _notify_client_order_status(order_id, "rejected")
+        except Exception as exc:
+            # order status is already committed -- a failed email must not block rejection
+            flash(f"Order #{order_id} rejected, but the client could not be emailed: {exc}", "error")
+            return redirect(url_for("orders.owner_pending_orders"))
         flash(f"Order #{order_id} rejected.", "success")
 
     return redirect(url_for("orders.owner_pending_orders"))
