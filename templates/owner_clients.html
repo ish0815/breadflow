@@ -44,6 +44,7 @@
                         {% endif %}
                     </td>
                     <td>
+                        <a class="btn-inline" href="{{ url_for('owner.edit_client_products', client_id=client.client_id) }}">Edit Catalogue</a>
                         {% if client.is_active %}
                         <form method="post" action="{{ url_for('owner.deactivate_client', client_id=client.client_id) }}">
                             <button type="submit" class="btn-deactivate">Deactivate</button>

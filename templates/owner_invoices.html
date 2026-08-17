@@ -63,7 +63,7 @@
                             <a class="btn-inline" href="{{ url_for('invoices.owner_invoice_pdf', invoice_id=invoice.invoice_id) }}">PDF</a>
                             {% if invoice.invoice_status == 'draft' %}
                             <form method="post" action="{{ url_for('invoices.send_invoice', invoice_id=invoice.invoice_id) }}">
-                                <button type="submit" class="btn-send">Send</button>
+                                <button type="submit" class="btn-send">Email</button>
                             </form>
                             {% elif invoice.invoice_status == 'sent' %}
                             <form method="post" action="{{ url_for('invoices.mark_invoice_paid', invoice_id=invoice.invoice_id) }}">

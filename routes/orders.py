@@ -1,8 +1,10 @@
-# routes/orders.py -- Module B: order placement (FR-B1/B2/B3) + owner approval queue (FR-B4).
+# routes/orders.py -- Module B: order placement (FR-B1/B2/B3) + owner approval queue (FR-B4)
+# + Module 6/10: owner order management and client order history.
 
 import datetime
+from math import ceil
 
-from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 
 from email_utils import send_email
 from models.client import Client
@@ -13,6 +15,27 @@ orders_bp = Blueprint("orders", __name__)
 
 # FR-B3: weeks of future dates to offer -- fixed weekdays only, not a date picker
 DELIVERY_DATE_WEEKS_AHEAD = 8
+
+# Module 6/10: data dictionary confirms 24/48/100 as the only page-size choices
+PAGE_SIZES = (24, 48, 100)
+DEFAULT_PAGE_SIZE = 24
+
+
+# Shared by owner_orders/client_order_history: clamps page/per_page from query args.
+def _parse_pagination_args(args):
+    try:
+        page = int(args.get("page", 1))
+    except ValueError:
+        page = 1
+    try:
+        per_page = int(args.get("per_page", DEFAULT_PAGE_SIZE))
+    except ValueError:
+        per_page = DEFAULT_PAGE_SIZE
+    if per_page not in PAGE_SIZES:
+        per_page = DEFAULT_PAGE_SIZE
+    if page < 1:
+        page = 1
+    return page, per_page
 
 
 # Future occurrences of `assigned_days`, soonest first.
@@ -41,11 +64,10 @@ def _notify_client_order_confirmation(order):
 def _notify_client_order_status(order_id, status):
     order = Order.get_by_id(order_id)
     client = Client.load_by_client_id(order.client_id)
-    send_email(
-        subject=f"BreadFlow order #{order_id} {status}",
-        recipients=[client.email],
-        body=f"Your order #{order_id} for {order.delivery_date} has been {status}.",
-    )
+    body = f"Your order #{order_id} for {order.delivery_date} has been {status}."
+    if status == "rejected" and order.rejection_reason:
+        body += f" Reason: {order.rejection_reason}"
+    send_email(subject=f"BreadFlow order #{order_id} {status}", recipients=[client.email], body=body)
 
 
 # FR-B1/B2/B3: GET renders the order form, POST places it via Order.place().
@@ -88,11 +110,75 @@ def client_order_form():
     return redirect(url_for("orders.client_order_form"))
 
 
-# FR-B4: simple pending queue. Full filter/search view is Module B, later.
+# FR-B4: simple pending queue -- quick approve/reject. Module 6 below is the full list.
 @orders_bp.route("/owner/orders/pending")
 @login_required("owner")
 def owner_pending_orders():
     return render_template("owner_orders_pending.html", orders=Order.get_pending())
+
+
+# Module 6: full searchable/filterable/sortable/paginated order list.
+@orders_bp.route("/owner/orders")
+@login_required("owner")
+def owner_orders():
+    search = request.args.get("search", "").strip()
+    status = request.args.get("status", "All")
+    sort = request.args.get("sort", "newest")
+    date_start = request.args.get("date_start", "").strip()
+    date_end = request.args.get("date_end", "").strip()
+    page, per_page = _parse_pagination_args(request.args)
+
+    orders, total_count = Order.list_all(
+        search=search or None, status=status, sort=sort,
+        date_start=date_start or None, date_end=date_end or None,
+        page=page, per_page=per_page,
+    )
+
+    return render_template(
+        "owner_orders.html", orders=orders, search=search, status=status, sort=sort,
+        date_start=date_start, date_end=date_end, page=page, per_page=per_page,
+        page_sizes=PAGE_SIZES, total_count=total_count,
+        total_pages=max(1, ceil(total_count / per_page)),
+    )
+
+
+# Module 6: read-only order detail, reached via the orders list's "View" action.
+@orders_bp.route("/owner/orders/<int:order_id>")
+@login_required("owner")
+def owner_order_detail(order_id):
+    order = Order.get_by_id(order_id)
+    if order is None:
+        abort(404)
+    client = Client.load_by_client_id(order.client_id)
+    return render_template(
+        "owner_order_detail.html", order=order, client=client,
+        lines=order.get_order_lines(), total_value=order.calculate_total(),
+    )
+
+
+# Module 10: client's own order history -- client_id always comes from the session
+# (FR-A3), never from the request, so a client can only ever see their own orders.
+@orders_bp.route("/client/orders")
+@login_required("client")
+def client_order_history():
+    client = Client.load_by_user_id(session["user_id"])
+    status = request.args.get("status", "All")
+    month = request.args.get("month", "").strip()
+    search = request.args.get("search", "").strip()
+    page, per_page = _parse_pagination_args(request.args)
+
+    orders, total_count = Order.list_for_client(
+        client.client_id, status=status, month=month or None, search=search or None,
+        page=page, per_page=per_page,
+    )
+    summary = Order.get_client_summary(client.client_id)
+
+    return render_template(
+        "client_order_history.html", client=client, orders=orders, summary=summary,
+        status=status, month=month, search=search, page=page, per_page=per_page,
+        page_sizes=PAGE_SIZES, total_count=total_count,
+        total_pages=max(1, ceil(total_count / per_page)),
+    )
 
 
 @orders_bp.route("/owner/orders/<int:order_id>/approve", methods=["POST"])
@@ -118,8 +204,8 @@ def approve_order(order_id):
 @login_required("owner")
 def reject_order(order_id):
     try:
-        Order.reject(order_id, session["user_id"])
-    except OrderStateError as exc:
+        Order.reject(order_id, session["user_id"], request.form.get("reason", ""))
+    except (OrderStateError, OrderValidationError) as exc:
         flash(str(exc), "error")
     else:
         try:

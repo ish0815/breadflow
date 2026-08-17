@@ -289,6 +289,34 @@ class Client(User):
         finally:
             connection.close()
 
+    # ---- catalogue management (Module 12, owner edit) ---------------------
+
+    # Replaces this client's entire client_products set in one transaction -- delete-then-
+    # reinsert is the simplest correct approach, since client_products has no soft-delete
+    # flag and no per-row edit history is required. Scoped entirely by self._client_id,
+    # so it can never touch another client's rows or products.base_price.
+    def update_product_catalogue(self, product_selections):
+        if not isinstance(product_selections, list) or not product_selections:
+            raise ClientValidationError("Select at least one product for this client's catalogue")
+        for selection in product_selections:
+            if selection["agreed_price"] <= 0 or selection["pack_size"] <= 0:
+                raise ClientValidationError("Product prices and pack sizes must be greater than zero")
+
+        connection = get_db_connection()
+        try:
+            connection.execute("DELETE FROM client_products WHERE client_id = ?", (self._client_id,))
+            for selection in product_selections:
+                connection.execute(
+                    """
+                    INSERT INTO client_products (client_id, product_id, agreed_price, pack_size)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (self._client_id, selection["product_id"], selection["agreed_price"], selection["pack_size"]),
+                )
+            connection.commit()
+        finally:
+            connection.close()
+
     # ---- session -----------------------------------------------------
 
     # Also stores client_id -- routes need it without an extra query.

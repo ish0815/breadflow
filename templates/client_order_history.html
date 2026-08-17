@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Order History - BreadFlow{% endblock %}
+
+{% block body %}
+<div class="order-page">
+    <header class="order-header">
+        <h1>Order history</h1>
+        <p class="order-subtext">{{ total_count }} total</p>
+    </header>
+
+    <main class="client-table-wrap">
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="summary-card-label">Total orders</div>
+                <div class="summary-card-value">{{ summary.total_order_count }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-card-label">Pending review</div>
+                <div class="summary-card-value">{{ summary.pending_count }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-card-label">This month spend</div>
+                <div class="summary-card-value">${{ "%.2f"|format(summary.this_month_spend) }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-card-label">Lifetime spend</div>
+                <div class="summary-card-value">${{ "%.2f"|format(summary.lifetime_spend) }}</div>
+            </div>
+        </div>
+
+        <div class="status-tabs">
+            {% for option in ["All", "Pending", "Approved", "Rejected", "Delivered"] %}
+            <a class="status-tab {% if status == option %}active{% endif %}"
+               href="{{ url_for('orders.client_order_history', status=option, month=month, search=search, per_page=per_page) }}">{{ option }}</a>
+            {% endfor %}
+        </div>
+
+        <form method="get" action="{{ url_for('orders.client_order_history') }}" class="order-filter-form">
+            <input type="hidden" name="status" value="{{ status }}">
+            <input type="text" name="search" placeholder="Search by order # or product" value="{{ search }}">
+            <input type="month" name="month" value="{{ month }}">
+            <select name="per_page">
+                {% for size in page_sizes %}
+                <option value="{{ size }}" {% if per_page == size %}selected{% endif %}>{{ size }} per page</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn-primary btn-inline">Filter</button>
+        </form>
+
+        {% if not orders %}
+        <p>No orders match these filters.</p>
+        {% else %}
+        <table class="client-table">
+            <thead>
+                <tr>
+                    <th>Order #</th>
+                    <th>Del. Date</th>
+                    <th>Products</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td>#{{ order.order_id }}</td>
+                    <td>{{ order.delivery_date }}</td>
+                    <td>{{ order.product_summary }}</td>
+                    <td>${{ "%.2f"|format(order.total_value) }}</td>
+                    <td><span class="status-pill status-{{ order.order_status }}">{{ order.order_status|capitalize }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="pagination">
+            {% if page > 1 %}
+            <a class="btn-inline" href="{{ url_for('orders.client_order_history', status=status, month=month, search=search, per_page=per_page, page=page-1) }}">Prev</a>
+            {% endif %}
+            <span>Page {{ page }} of {{ total_pages }}</span>
+            {% if page < total_pages %}
+            <a class="btn-inline" href="{{ url_for('orders.client_order_history', status=status, month=month, search=search, per_page=per_page, page=page+1) }}">Next</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}

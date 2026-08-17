@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Catalogue - {{ client.business_name }} - BreadFlow{% endblock %}
+
+{% block body %}
+<div class="order-page">
+    <header class="order-header">
+        <h1>Edit Catalogue</h1>
+        <p class="order-subtext">{{ client.business_name }}</p>
+    </header>
+
+    <main class="client-form-wrap">
+        {% if error %}
+        <div class="error-banner" role="alert">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('owner.edit_client_products', client_id=client.client_id) }}" novalidate>
+            <h2 class="form-section-title">Master Product List</h2>
+
+            <div class="catalogue-list">
+                {% for product in products %}
+                <div class="catalogue-row">
+                    <label class="catalogue-check">
+                        <input type="checkbox" name="product_{{ product.product_id }}"
+                               {% if form_data.get('product_' ~ product.product_id) %}checked{% endif %}>
+                        {{ product.product_name }}
+                        <span class="product-meta">{{ product.category }} &middot; base ${{ "%.2f"|format(product.base_price) }}</span>
+                    </label>
+                    <input type="number" min="0.01" step="0.01" class="catalogue-price"
+                           name="price_{{ product.product_id }}" placeholder="Agreed price"
+                           value="{{ form_data.get('price_' ~ product.product_id, '') }}">
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="client-form-actions">
+                <button type="submit" class="btn-primary">Save Changes</button>
+                <a class="btn-cancel" href="{{ url_for('owner.client_list') }}">Cancel</a>
+            </div>
+        </form>
+    </main>
+</div>
+{% endblock %}

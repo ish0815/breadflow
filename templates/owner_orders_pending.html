@@ -31,7 +31,8 @@
                     <form method="post" action="{{ url_for('orders.approve_order', order_id=order.order_id) }}">
                         <button type="submit" class="btn-approve">Approve</button>
                     </form>
-                    <form method="post" action="{{ url_for('orders.reject_order', order_id=order.order_id) }}">
+                    <form method="post" action="{{ url_for('orders.reject_order', order_id=order.order_id) }}" class="reject-form">
+                        <textarea name="reason" maxlength="300" placeholder="Reason for rejection (optional)"></textarea>
                         <button type="submit" class="btn-reject">Reject</button>
                     </form>
                 </div>

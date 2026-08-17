@@ -61,7 +61,9 @@ CREATE TABLE IF NOT EXISTS orders (
     special_instructions TEXT CHECK (special_instructions IS NULL OR LENGTH(special_instructions) <= 300),
     order_created_at     TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%S', 'now')),
     approved_by          INTEGER REFERENCES users(user_id),  -- NULL while pending (FR-B4)
-    approved_at          TEXT
+    approved_at          TEXT,
+    -- set only when order_status = 'rejected' (FR-B4)
+    rejection_reason     TEXT CHECK (rejection_reason IS NULL OR LENGTH(rejection_reason) <= 300)
 );
 
 CREATE TABLE IF NOT EXISTS order_lines (

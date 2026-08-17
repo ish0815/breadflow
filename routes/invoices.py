@@ -4,6 +4,7 @@ import datetime
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, send_file, session, url_for
 
+from email_utils import send_email
 from models.client import Client
 from models.invoice import Invoice, InvoiceStateError
 from routes.auth import login_required
@@ -11,9 +12,18 @@ from routes.auth import login_required
 invoices_bp = Blueprint("invoices", __name__)
 
 
-# Stub for FR-D1's client notification email, same shape as orders.py's stub -- real SMTP later.
-def _notify_client_invoice_sent(invoice_id):
-    print(f"[stub email] invoice {invoice_id} -> client notified: sent")
+# FR-D1: emails the client their invoice PDF. Mockup is manual-trigger ("Email"/"Email All"
+# buttons), not automatic-on-generate, so this is only ever called from send_invoice/send_all_invoices.
+def _notify_client_invoice_sent(invoice):
+    recipient = Client.load_by_client_id(invoice.client_id)
+    send_email(
+        subject=f"BreadFlow invoice {invoice.display_id}",
+        recipients=[recipient.email],
+        body=f"Your invoice {invoice.display_id} for {invoice.billing_period_start} to "
+             f"{invoice.billing_period_end} is attached. Total due: ${invoice.invoice_total:.2f}.",
+        attachment_path=invoice.pdf_path,
+        attachment_filename=f"{invoice.display_id}.pdf",
+    )
 
 
 # GET renders the period picker + full invoice list; POST runs "Generate All Invoices".
@@ -47,12 +57,22 @@ def owner_invoices():
 @invoices_bp.route("/owner/invoices/<int:invoice_id>/send", methods=["POST"])
 @login_required("owner")
 def send_invoice(invoice_id):
+    invoice = Invoice.load(invoice_id)
+    if invoice is None:
+        abort(404)
+
+    # email first -- a failed send must not leave the invoice incorrectly marked as sent
+    try:
+        _notify_client_invoice_sent(invoice)
+    except Exception as exc:
+        flash(f"Invoice {invoice.display_id} could not be emailed: {exc}", "error")
+        return redirect(url_for("invoices.owner_invoices"))
+
     try:
         Invoice.mark_sent(invoice_id)
     except InvoiceStateError as exc:
         flash(str(exc), "error")
     else:
-        _notify_client_invoice_sent(invoice_id)
         flash("Invoice sent.", "success")
     return redirect(url_for("invoices.owner_invoices"))
 
@@ -62,12 +82,22 @@ def send_invoice(invoice_id):
 @login_required("owner")
 def send_all_invoices():
     sent_count = 0
+    failed_count = 0
     for invoice in Invoice.list_all():
-        if invoice.invoice_status == "draft":
-            Invoice.mark_sent(invoice.invoice_id)
-            _notify_client_invoice_sent(invoice.invoice_id)
-            sent_count += 1
-    flash(f"{sent_count} invoice(s) sent.", "success")
+        if invoice.invoice_status != "draft":
+            continue
+        try:
+            _notify_client_invoice_sent(invoice)
+        except Exception:
+            failed_count += 1
+            continue
+        Invoice.mark_sent(invoice.invoice_id)
+        sent_count += 1
+
+    if failed_count:
+        flash(f"{sent_count} invoice(s) sent, {failed_count} could not be emailed.", "error")
+    else:
+        flash(f"{sent_count} invoice(s) sent.", "success")
     return redirect(url_for("invoices.owner_invoices"))
 
 

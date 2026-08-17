@@ -9,6 +9,7 @@ from models.order_line import OrderLine
 WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
 MAX_SPECIAL_INSTRUCTIONS_LENGTH = 300  # data dictionary: "Max 300 chars"
+MAX_REJECTION_REASON_LENGTH = 300  # matches special_instructions' cap convention
 
 
 # FR-B1 validation failure: bad quantity, no products, or wrong delivery day.
@@ -25,7 +26,8 @@ class OrderStateError(Exception):
 class Order:
 
     def __init__(self, order_id, client_id, delivery_date, order_status,
-                 special_instructions, order_created_at, approved_by=None, approved_at=None):
+                 special_instructions, order_created_at, approved_by=None, approved_at=None,
+                 rejection_reason=None):
         self._order_id = order_id
         self._client_id = client_id
         self._delivery_date = delivery_date
@@ -34,6 +36,7 @@ class Order:
         self._order_created_at = order_created_at
         self._approved_by = approved_by
         self._approved_at = approved_at
+        self._rejection_reason = rejection_reason
 
     @property
     def order_id(self):
@@ -54,6 +57,22 @@ class Order:
     @property
     def special_instructions(self):
         return self._special_instructions
+
+    @property
+    def order_created_at(self):
+        return self._order_created_at
+
+    @property
+    def approved_by(self):
+        return self._approved_by
+
+    @property
+    def approved_at(self):
+        return self._approved_at
+
+    @property
+    def rejection_reason(self):
+        return self._rejection_reason
 
     # ---- placing an order (FR-B1) -----------------------------------------
 
@@ -187,6 +206,168 @@ class Order:
             })
         return pending
 
+    # Module 6: fixed whitelist of sort columns -- never build ORDER BY from raw input.
+    _SORT_COLUMNS = {
+        "newest": "orders.order_id DESC",
+        "delivery_date": "orders.delivery_date ASC",
+        "client_name": "clients.business_name ASC",
+        "total": "(SELECT COALESCE(SUM(order_lines.quantity * order_lines.unit_price), 0) "
+                 "FROM order_lines WHERE order_lines.order_id = orders.order_id) DESC",
+    }
+
+    # Module 6: full searchable/filterable/paginated order list for the owner.
+    # Returns (orders, total_count) as display-ready dicts, same shape as get_pending().
+    @classmethod
+    def list_all(cls, search=None, status=None, sort="newest", date_start=None, date_end=None,
+                 page=1, per_page=24):
+        conditions = []
+        params = []
+        if status and status != "All":
+            conditions.append("orders.order_status = ?")
+            params.append(status.lower())
+        if search:
+            conditions.append("(clients.business_name LIKE ? OR CAST(orders.order_id AS TEXT) = ?)")
+            params.append(f"%{search}%")
+            params.append(search)
+        if date_start:
+            conditions.append("orders.delivery_date >= ?")
+            params.append(date_start)
+        if date_end:
+            conditions.append("orders.delivery_date <= ?")
+            params.append(date_end)
+
+        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        order_by = cls._SORT_COLUMNS.get(sort, cls._SORT_COLUMNS["newest"])
+
+        connection = get_db_connection()
+        try:
+            total_count = connection.execute(
+                f"""
+                SELECT COUNT(*) AS count FROM orders
+                JOIN clients ON clients.client_id = orders.client_id
+                {where_clause}
+                """,
+                params,
+            ).fetchone()["count"]
+
+            rows = connection.execute(
+                f"""
+                SELECT orders.*, clients.business_name, clients.delivery_zone
+                FROM orders
+                JOIN clients ON clients.client_id = orders.client_id
+                {where_clause}
+                ORDER BY {order_by}
+                LIMIT ? OFFSET ?
+                """,
+                params + [per_page, (page - 1) * per_page],
+            ).fetchall()
+        finally:
+            connection.close()
+
+        orders = []
+        for row in rows:
+            order = cls._build_from_row(row)
+            lines = order.get_order_lines()
+            orders.append({
+                "order_id": order.order_id,
+                "business_name": row["business_name"],
+                "delivery_zone": row["delivery_zone"],
+                "delivery_date": order.delivery_date,
+                "product_summary": ", ".join(f"{line.product_name} x{line.quantity}" for line in lines),
+                "total_value": order.calculate_total(),
+                "order_status": order.order_status,
+            })
+        return orders, total_count
+
+    # Module 10: a client's own order history, always scoped by client_id (FR-A3 --
+    # caller must derive client_id from session, never trust a request-supplied value).
+    # Newest first, per the data dictionary -- no sort option, unlike list_all().
+    @classmethod
+    def list_for_client(cls, client_id, status=None, month=None, search=None, page=1, per_page=24):
+        conditions = ["orders.client_id = ?"]
+        params = [client_id]
+        if status and status != "All":
+            conditions.append("orders.order_status = ?")
+            params.append(status.lower())
+        if month:
+            conditions.append("STRFTIME('%Y-%m', orders.delivery_date) = ?")
+            params.append(month)
+        if search:
+            conditions.append(
+                "(CAST(orders.order_id AS TEXT) = ? OR orders.order_id IN "
+                "(SELECT order_lines.order_id FROM order_lines "
+                "JOIN products ON products.product_id = order_lines.product_id "
+                "WHERE products.product_name LIKE ?))"
+            )
+            params.append(search)
+            params.append(f"%{search}%")
+
+        where_clause = "WHERE " + " AND ".join(conditions)
+
+        connection = get_db_connection()
+        try:
+            total_count = connection.execute(
+                f"SELECT COUNT(*) AS count FROM orders {where_clause}", params
+            ).fetchone()["count"]
+
+            rows = connection.execute(
+                f"""
+                SELECT * FROM orders {where_clause}
+                ORDER BY orders.order_id DESC
+                LIMIT ? OFFSET ?
+                """,
+                params + [per_page, (page - 1) * per_page],
+            ).fetchall()
+        finally:
+            connection.close()
+
+        orders = []
+        for row in rows:
+            order = cls._build_from_row(row)
+            lines = order.get_order_lines()
+            orders.append({
+                "order_id": order.order_id,
+                "delivery_date": order.delivery_date,
+                "product_summary": ", ".join(f"{line.product_name} x{line.quantity}" for line in lines),
+                "total_value": order.calculate_total(),
+                "order_status": order.order_status,
+            })
+        return orders, total_count
+
+    # Module 10: summary cards -- total orders, pending count, this-month/lifetime spend.
+    # Spend excludes 'rejected' orders (never fulfilled) but includes pending/approved/
+    # delivered -- this is the client's own "what I've ordered" view, not a billing figure.
+    @classmethod
+    def get_client_summary(cls, client_id):
+        connection = get_db_connection()
+        try:
+            row = connection.execute(
+                """
+                SELECT
+                    COUNT(DISTINCT orders.order_id) AS total_order_count,
+                    COUNT(DISTINCT CASE WHEN orders.order_status = 'pending'
+                                         THEN orders.order_id END) AS pending_count,
+                    COALESCE(SUM(CASE WHEN orders.order_status != 'rejected'
+                                       AND STRFTIME('%Y-%m', orders.delivery_date) = STRFTIME('%Y-%m', 'now')
+                                       THEN order_lines.quantity * order_lines.unit_price END), 0) AS this_month_spend,
+                    COALESCE(SUM(CASE WHEN orders.order_status != 'rejected'
+                                       THEN order_lines.quantity * order_lines.unit_price END), 0) AS lifetime_spend
+                FROM orders
+                LEFT JOIN order_lines ON order_lines.order_id = orders.order_id
+                WHERE orders.client_id = ?
+                """,
+                (client_id,),
+            ).fetchone()
+        finally:
+            connection.close()
+
+        return {
+            "total_order_count": row["total_order_count"],
+            "pending_count": row["pending_count"],
+            "this_month_spend": row["this_month_spend"],
+            "lifetime_spend": row["lifetime_spend"],
+        }
+
     # FR-E1: single-order lookup, used to pull client/product details onto a driver's docket.
     @classmethod
     def get_by_id(cls, order_id):
@@ -203,9 +384,15 @@ class Order:
     def approve(cls, order_id, owner_id):
         cls._set_status(order_id, "approved", owner_id)
 
+    # FR-B4: reason is optional, but capped to match special_instructions' length convention.
     @classmethod
-    def reject(cls, order_id, owner_id):
-        cls._set_status(order_id, "rejected", owner_id)
+    def reject(cls, order_id, owner_id, reason=None):
+        reason = (reason or "").strip() or None
+        if reason and len(reason) > MAX_REJECTION_REASON_LENGTH:
+            raise OrderValidationError(
+                f"Rejection reason must be {MAX_REJECTION_REASON_LENGTH} characters or fewer"
+            )
+        cls._set_status(order_id, "rejected", owner_id, reason=reason)
 
     # ---- delivery completion (FR-E2) ---------------------------------------
 
@@ -229,17 +416,18 @@ class Order:
             raise OrderStateError("This order is not in a state that can be marked delivered")
 
     @staticmethod
-    def _set_status(order_id, status, owner_id):
+    def _set_status(order_id, status, owner_id, reason=None):
         connection = get_db_connection()
         try:
             # only matches if still pending -- blocks a double approve/reject
             cursor = connection.execute(
                 """
                 UPDATE orders SET order_status = ?, approved_by = ?,
-                                  approved_at = STRFTIME('%Y-%m-%dT%H:%M:%S', 'now')
+                                  approved_at = STRFTIME('%Y-%m-%dT%H:%M:%S', 'now'),
+                                  rejection_reason = ?
                 WHERE order_id = ? AND order_status = 'pending'
                 """,
-                (status, owner_id, order_id),
+                (status, owner_id, reason, order_id),
             )
             connection.commit()
         finally:
@@ -252,4 +440,4 @@ class Order:
     def _build_from_row(row):
         return Order(row["order_id"], row["client_id"], row["delivery_date"], row["order_status"],
                      row["special_instructions"], row["order_created_at"],
-                     row["approved_by"], row["approved_at"])
+                     row["approved_by"], row["approved_at"], row["rejection_reason"])

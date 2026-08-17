@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Orders - BreadFlow{% endblock %}
+
+{% block body %}
+<div class="order-page">
+    <header class="order-header">
+        <h1>Orders</h1>
+        <p class="order-subtext">{{ total_count }} total</p>
+    </header>
+
+    <main class="client-table-wrap">
+        <form method="get" action="{{ url_for('orders.owner_orders') }}" class="order-filter-form">
+            <input type="text" name="search" placeholder="Search by client or order #" value="{{ search }}">
+
+            <select name="status">
+                {% for option in ["All", "Pending", "Approved", "Rejected", "Delivered"] %}
+                <option value="{{ option }}" {% if status == option %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="sort">
+                <option value="newest" {% if sort == "newest" %}selected{% endif %}>Order # (newest first)</option>
+                <option value="delivery_date" {% if sort == "delivery_date" %}selected{% endif %}>Delivery date</option>
+                <option value="client_name" {% if sort == "client_name" %}selected{% endif %}>Client name</option>
+                <option value="total" {% if sort == "total" %}selected{% endif %}>Total (highest first)</option>
+            </select>
+
+            <label>From <input type="date" name="date_start" value="{{ date_start }}"></label>
+            <label>To <input type="date" name="date_end" value="{{ date_end }}"></label>
+
+            <select name="per_page">
+                {% for size in page_sizes %}
+                <option value="{{ size }}" {% if per_page == size %}selected{% endif %}>{{ size }} per page</option>
+                {% endfor %}
+            </select>
+
+            <button type="submit" class="btn-primary btn-inline">Filter</button>
+        </form>
+
+        {% if not orders %}
+        <p>No orders match these filters.</p>
+        {% else %}
+        <table class="client-table">
+            <thead>
+                <tr>
+                    <th>Order #</th>
+                    <th>Client</th>
+                    <th>Del. Date</th>
+                    <th>Zone</th>
+                    <th>Products</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td>#{{ order.order_id }}</td>
+                    <td>{{ order.business_name }}</td>
+                    <td>{{ order.delivery_date }}</td>
+                    <td>{{ order.delivery_zone }}</td>
+                    <td>{{ order.product_summary }}</td>
+                    <td>${{ "%.2f"|format(order.total_value) }}</td>
+                    <td><span class="status-pill status-{{ order.order_status }}">{{ order.order_status|capitalize }}</span></td>
+                    <td><a class="btn-inline" href="{{ url_for('orders.owner_order_detail', order_id=order.order_id) }}">View</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="pagination">
+            {% if page > 1 %}
+            <a class="btn-inline" href="{{ url_for('orders.owner_orders', search=search, status=status, sort=sort, date_start=date_start, date_end=date_end, per_page=per_page, page=page-1) }}">Prev</a>
+            {% endif %}
+            <span>Page {{ page }} of {{ total_pages }}</span>
+            {% if page < total_pages %}
+            <a class="btn-inline" href="{{ url_for('orders.owner_orders', search=search, status=status, sort=sort, date_start=date_start, date_end=date_end, per_page=per_page, page=page+1) }}">Next</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}

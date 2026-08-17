@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Order #{{ order.order_id }} - BreadFlow{% endblock %}
+
+{% block body %}
+<div class="order-page">
+    <header class="order-header">
+        <h1>Order #{{ order.order_id }}</h1>
+        <p class="order-subtext"><a href="{{ url_for('orders.owner_orders') }}">&larr; Back to orders</a></p>
+    </header>
+
+    <main class="client-table-wrap">
+        <div class="order-detail-row">
+            <span>Client</span>
+            <span>{{ client.business_name }} ({{ client.delivery_zone }})</span>
+        </div>
+        <div class="order-detail-row">
+            <span>Delivery date</span>
+            <span>{{ order.delivery_date }}</span>
+        </div>
+        <div class="order-detail-row">
+            <span>Status</span>
+            <span class="status-pill status-{{ order.order_status }}">{{ order.order_status|capitalize }}</span>
+        </div>
+        {% if order.special_instructions %}
+        <div class="order-detail-row">
+            <span>Special instructions</span>
+            <span>{{ order.special_instructions }}</span>
+        </div>
+        {% endif %}
+        {% if order.order_status == 'rejected' and order.rejection_reason %}
+        <div class="order-detail-row">
+            <span>Rejection reason</span>
+            <span>{{ order.rejection_reason }}</span>
+        </div>
+        {% endif %}
+        {% if order.approved_by %}
+        <div class="order-detail-row">
+            <span>Actioned at</span>
+            <span>{{ order.approved_at }}</span>
+        </div>
+        {% endif %}
+
+        <table class="client-table">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Qty</th>
+                    <th>Unit Price</th>
+                    <th>Line Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in lines %}
+                <tr>
+                    <td>{{ line.product_name }}</td>
+                    <td>{{ line.quantity }}</td>
+                    <td>${{ "%.2f"|format(line.unit_price) }}</td>
+                    <td>${{ "%.2f"|format(line.calculate_line_total()) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="order-summary-row order-summary-total">
+            <span>Total</span>
+            <span>${{ "%.2f"|format(total_value) }}</span>
+        </div>
+    </main>
+</div>
+{% endblock %}

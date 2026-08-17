@@ -74,6 +74,7 @@ def request_entity_too_large(_exc):
 def owner_dashboard():
     return render_template("dashboard_stub.html", portal_name="Owner", extra_links=[
         (url_for("orders.owner_pending_orders"), "View pending orders"),
+        (url_for("orders.owner_orders"), "Manage all orders"),
         (url_for("production.production_list_view"), "View production list"),
         (url_for("owner.client_list"), "Manage clients"),
         (url_for("invoices.owner_invoices"), "Manage invoices"),
@@ -85,6 +86,7 @@ def owner_dashboard():
 def client_dashboard():
     return render_template("dashboard_stub.html", portal_name="Client", extra_links=[
         (url_for("orders.client_order_form"), "Place an order"),
+        (url_for("orders.client_order_history"), "Order history"),
         (url_for("invoices.client_invoices"), "View invoices"),
     ])
 
