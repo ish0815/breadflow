@@ -4,9 +4,12 @@
 
 {% block owner_content %}
 <div class="order-page">
-    <header class="order-header">
-        <h1>Orders</h1>
-        <p class="order-subtext">{{ total_count }} total</p>
+    <header class="order-header client-list-header">
+        <div>
+            <h1>Orders</h1>
+            <p class="order-subtext">{{ total_count }} total</p>
+        </div>
+        <a class="btn-primary btn-inline" href="{{ url_for('orders.owner_pending_orders') }}">View Pending Orders</a>
     </header>
 
     <main class="client-table-wrap">

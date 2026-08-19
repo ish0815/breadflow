@@ -5,7 +5,7 @@ import io
 
 from flask import Blueprint, Response, render_template, request
 
-from models.analytics import Analytics, fy_label, resolve_period_bounds
+from models.analytics import Analytics, fy_bounds, fy_label
 from routes.auth import login_required
 
 analytics_bp = Blueprint("analytics", __name__)
@@ -32,7 +32,7 @@ def _resolve_query_params():
 @login_required("owner")
 def dashboard():
     period, selected_fy, available_fys = _resolve_query_params()
-    start, end = resolve_period_bounds(period, selected_fy)
+    start, end = fy_bounds(selected_fy)
 
     summary = Analytics.get_period_summary(start, end)
     monthly = Analytics.get_monthly_revenue(selected_fy)
@@ -62,7 +62,7 @@ def dashboard():
 @login_required("owner")
 def export_csv():
     period, selected_fy, available_fys = _resolve_query_params()
-    start, end = resolve_period_bounds(period, selected_fy)
+    start, end = fy_bounds(selected_fy)
 
     yoy = Analytics.get_yoy_comparison(selected_fy)
     top_clients = Analytics.get_top_clients(start, end)
