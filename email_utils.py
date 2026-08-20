@@ -8,7 +8,7 @@ mail = Mail()
 # recipients is always a list -- Flask-Mail requires it even for a single address.
 # attachment_path/attachment_filename are optional, used by FR-D1 to attach the invoice PDF.
 def send_email(subject, recipients, body, attachment_path=None, attachment_filename=None):
-    message = Message(subject=subject, recipients=recipients, body=body)
+    message = Message(subject=subject, recipients=recipients, body=body, charset="utf-8")
     if attachment_path is not None:
         with open(attachment_path, "rb") as pdf_file:
             message.attach(attachment_filename, "application/pdf", pdf_file.read())
