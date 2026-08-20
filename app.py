@@ -46,8 +46,20 @@ app.config["MAX_CONTENT_LENGTH"] = 12 * 1024 * 1024
 app.config["MAIL_SERVER"] = "smtp.gmail.com"
 app.config["MAIL_PORT"] = 587
 app.config["MAIL_USE_TLS"] = True
+
+# Gmail app passwords are displayed in 4-char groups (e.g. "abcd efgh ijkl mnop")
+# purely for readability -- the actual secret has no spaces. Copy/pasting that
+# display string from a web page commonly picks up non-breaking spaces (\xa0)
+# instead of plain ones, which smtplib.encode('ascii') then rejects during
+# AUTH PLAIN/LOGIN. Stripping all whitespace makes loading robust either way.
+def _clean_mail_credential(value):
+    if value is None:
+        return None
+    return "".join(value.split())
+
+
 app.config["MAIL_USERNAME"] = os.environ.get("MAIL_USERNAME")
-app.config["MAIL_PASSWORD"] = os.environ.get("MAIL_PASSWORD")
+app.config["MAIL_PASSWORD"] = _clean_mail_credential(os.environ.get("MAIL_PASSWORD"))
 app.config["MAIL_DEFAULT_SENDER"] = os.environ.get("MAIL_DEFAULT_SENDER")
 mail.init_app(app)
 

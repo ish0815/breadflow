@@ -221,3 +221,4 @@ CLAUDE.md
 
 # FR-E2 proof-of-delivery photos -- generated at runtime, unlike breadflow.db
 instance/uploads/
+instance/invoices/

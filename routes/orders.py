@@ -8,6 +8,8 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, s
 
 from email_utils import send_email
 from models.client import Client
+from models.delivery import Delivery, DeliveryValidationError
+from models.driver import Driver
 from models.order import Order, OrderStateError, OrderValidationError, WEEKDAYS
 from routes.auth import login_required
 
@@ -58,6 +60,16 @@ def _notify_client_order_confirmation(order):
         body=f"We've received your order #{order.order_id} for {order.delivery_date}. "
              f"It's awaiting approval.",
     )
+
+
+# FR-E1: auto-assigns the order to Bread Staple's one active driver so it
+# shows up on their docket -- order status is already committed, so a
+# failure here must not block approval (same philosophy as the email step below).
+def _assign_default_driver(order_id):
+    driver_id = Driver.get_default()
+    if driver_id is None:
+        raise DeliveryValidationError("No active driver account exists to assign")
+    Delivery.create(order_id, driver_id)
 
 
 # FR-B4: emails the client once an owner has approved/rejected their order.
@@ -189,6 +201,12 @@ def approve_order(order_id):
     except OrderStateError as exc:
         flash(str(exc), "error")
     else:
+        try:
+            _assign_default_driver(order_id)
+        except DeliveryValidationError as exc:
+            # order status is already committed -- a failed assignment must not block approval
+            flash(f"Order #{order_id} approved, but no driver could be assigned: {exc}", "error")
+            return redirect(url_for("orders.owner_pending_orders"))
         try:
             _notify_client_order_status(order_id, "approved")
         except Exception as exc:
